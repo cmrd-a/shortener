@@ -10,7 +10,7 @@ import (
 
 var InMemoryStorage = make(map[string]string)
 
-func rootHandler(res http.ResponseWriter, req *http.Request) {
+func RootHandler(res http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case `GET`:
 		linkID := strings.TrimPrefix(req.RequestURI, "/")
