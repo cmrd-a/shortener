@@ -8,7 +8,15 @@ import (
 	"testing"
 )
 
-func TestRootHandler(t *testing.T) {
+func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
+	rr := httptest.NewRecorder()
+	s.Router.ServeHTTP(rr, req)
+	return rr
+}
+
+func TestAddLinkHandler(t *testing.T) {
+	s := CreateNewServer()
+	s.MountHandlers()
 	type want struct {
 		stausCode     int
 		response      string
@@ -25,20 +33,34 @@ func TestRootHandler(t *testing.T) {
 		want   want
 	}{
 		{name: "1 post", params: params{method: "POST", url: "/", body: "https://ya.ru"}, want: want{stausCode: http.StatusCreated}},
-		{name: "2 get", params: params{method: "GET", url: "/", body: "some red"}, want: want{stausCode: http.StatusTemporaryRedirect}},
 	}
-	for i, tt := range tests {
-		bodyBytes := strings.NewReader(tt.params.body)
-		req := httptest.NewRequest(tt.params.method, tt.params.url, bodyBytes)
-		res := httptest.NewRecorder()
-		RootHandler(res, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bodyBytes := strings.NewReader(tt.params.body)
+			req := httptest.NewRequest(tt.params.method, tt.params.url, bodyBytes)
+			res := executeRequest(req, s)
+			resBody := res.Body.String()
 
-		resBody := res.Body.String()
-
-		assert.Equal(t, tt.want.stausCode, res.Code)
-		assert.GreaterOrEqual(t, len(resBody), tt.want.minBodyLength)
-		if i == 0 {
-			tests[1].params.url = strings.TrimPrefix(resBody, "http://example.com")
-		}
+			assert.Equal(t, tt.want.stausCode, res.Code)
+			assert.GreaterOrEqual(t, len(resBody), tt.want.minBodyLength)
+		})
 	}
+}
+
+func TestGetLinkHandler(t *testing.T) {
+	s := CreateNewServer()
+	s.MountHandlers()
+
+	originalLink := "https://ya.ru"
+	req1 := httptest.NewRequest("POST", "/", strings.NewReader(originalLink))
+	res1 := executeRequest(req1, s)
+	linkID := strings.TrimPrefix(res1.Body.String(), "http://example.com")
+
+	req := httptest.NewRequest("GET", linkID, nil)
+	res := executeRequest(req, s)
+	header := res.Header().Get("location")
+
+	assert.Equal(t, http.StatusTemporaryRedirect, res.Code)
+	assert.Equal(t, originalLink, header)
+
 }
