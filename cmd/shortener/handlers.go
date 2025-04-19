@@ -21,7 +21,7 @@ func AddLinkHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	linkID := uuid.New().String()
-	shortLink := fmt.Sprintf("http://%s/%s", req.Host, linkID)
+	shortLink := fmt.Sprintf("%s/%s", baseDomain, linkID)
 	InMemoryStorage[linkID] = originalLink
 	res.WriteHeader(http.StatusCreated)
 	res.Header().Set("Content-Type", "text/plain")

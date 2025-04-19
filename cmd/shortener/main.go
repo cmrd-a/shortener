@@ -28,10 +28,12 @@ func (s *Server) MountHandlers() {
 }
 
 func main() {
+	parseFlags()
+
 	s := CreateNewServer()
 	s.MountHandlers()
 
-	err := http.ListenAndServe(":8080", s.Router)
+	err := http.ListenAndServe(flagRunAddr, s.Router)
 	if err != nil {
 		panic(err)
 	}
