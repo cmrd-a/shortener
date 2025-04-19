@@ -54,7 +54,7 @@ func TestGetLinkHandler(t *testing.T) {
 	originalLink := "https://ya.ru"
 	req1 := httptest.NewRequest("POST", "/", strings.NewReader(originalLink))
 	res1 := executeRequest(req1, s)
-	linkID := strings.TrimPrefix(res1.Body.String(), "http://example.com")
+	linkID := res1.Body.String()
 
 	req := httptest.NewRequest("GET", linkID, nil)
 	res := executeRequest(req, s)
