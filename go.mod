@@ -3,9 +3,9 @@ module github.com/cmrd-a/shortener
 go 1.24.2
 
 require (
-	github.com/go-chi/chi/v5 v5.2.1
-	github.com/google/uuid v1.6.0
-	github.com/stretchr/testify v1.10.0
+	github.com/caarlos0/env/v11 v11.2.2
+	github.com/go-chi/chi/v5 v5.1.0
+	github.com/stretchr/testify v1.9.0
 )
 
 require (

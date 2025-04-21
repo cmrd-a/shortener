@@ -3,12 +3,22 @@ package main
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"io"
+	"math/rand"
 	"net/http"
 )
 
 var InMemoryStorage = make(map[string]string)
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandString() string {
+	b := make([]rune, 5)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
 
 func AddLinkHandler(res http.ResponseWriter, req *http.Request) {
 	bodyBytes, err := io.ReadAll(req.Body)
@@ -20,8 +30,8 @@ func AddLinkHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	linkID := uuid.New().String()
-	shortLink := fmt.Sprintf("%s/%s", baseDomain, linkID)
+	linkID := RandString()
+	shortLink := fmt.Sprintf("%s/%s", baseURL, linkID)
 	InMemoryStorage[linkID] = originalLink
 	res.WriteHeader(http.StatusCreated)
 	res.Header().Set("Content-Type", "text/plain")

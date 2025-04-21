@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
@@ -32,8 +33,8 @@ func main() {
 
 	s := CreateNewServer()
 	s.MountHandlers()
-
-	err := http.ListenAndServe(flagRunAddr, s.Router)
+	fmt.Printf("Starting server at %s...\n", serverAddress)
+	err := http.ListenAndServe(serverAddress, s.Router)
 	if err != nil {
 		panic(err)
 	}
