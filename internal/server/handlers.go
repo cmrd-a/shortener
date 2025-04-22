@@ -1,24 +1,13 @@
-package main
+package server
 
 import (
 	"fmt"
+	"github.com/cmrd-a/shortener/internal/config"
+	"github.com/cmrd-a/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"io"
-	"math/rand"
 	"net/http"
 )
-
-var InMemoryStorage = make(map[string]string)
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func RandString() string {
-	b := make([]rune, 5)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
 
 func AddLinkHandler(res http.ResponseWriter, req *http.Request) {
 	bodyBytes, err := io.ReadAll(req.Body)
@@ -30,9 +19,9 @@ func AddLinkHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	linkID := RandString()
-	shortLink := fmt.Sprintf("%s/%s", baseURL, linkID)
-	InMemoryStorage[linkID] = originalLink
+	linkID := storage.RandString()
+	shortLink := fmt.Sprintf("%s/%s", config.BaseURL, linkID)
+	storage.InMemoryStorage[linkID] = originalLink
 	res.WriteHeader(http.StatusCreated)
 	res.Header().Set("Content-Type", "text/plain")
 	_, err = res.Write([]byte(shortLink))
@@ -47,7 +36,7 @@ func GetLinkHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	originalLink, ok := InMemoryStorage[linkID]
+	originalLink, ok := storage.InMemoryStorage[linkID]
 	if !ok {
 		res.WriteHeader(http.StatusBadRequest)
 		return
