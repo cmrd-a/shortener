@@ -52,11 +52,11 @@ func TestGetLinkHandler(t *testing.T) {
 	s.MountHandlers()
 
 	originalLink := "https://ya.ru"
-	req1 := httptest.NewRequest("POST", "/", strings.NewReader(originalLink))
+	req1 := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(originalLink))
 	res1 := executeRequest(req1, s)
 	linkID := res1.Body.String()
 
-	req := httptest.NewRequest("GET", linkID, nil)
+	req := httptest.NewRequest(http.MethodGet, linkID, nil)
 	res := executeRequest(req, s)
 	header := res.Header().Get("location")
 
