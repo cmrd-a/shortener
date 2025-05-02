@@ -1,8 +1,9 @@
 package server
 
 import (
+	"github.com/cmrd-a/shortener/internal/config"
+	"github.com/cmrd-a/shortener/internal/logger"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
@@ -16,9 +17,19 @@ func CreateNewServer() *Server {
 }
 
 func (s *Server) MountHandlers() {
-	s.Router.Use(middleware.Logger)
+	s.Router.Use(logger.RequestResponseLogger)
 
 	s.Router.Post("/", AddLinkHandler)
 	s.Router.Get("/{linkId}", GetLinkHandler)
 
+}
+func (s *Server) InitLogger() {
+	if err := logger.Initialize(config.LogLevel); err != nil {
+		panic(err)
+	}
+}
+
+func (s *Server) Prepare() {
+	s.InitLogger()
+	s.MountHandlers()
 }

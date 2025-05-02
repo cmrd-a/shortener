@@ -16,7 +16,7 @@ func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
 
 func TestAddLinkHandler(t *testing.T) {
 	s := CreateNewServer()
-	s.MountHandlers()
+	s.Prepare()
 	type want struct {
 		stausCode     int
 		response      string
@@ -49,7 +49,7 @@ func TestAddLinkHandler(t *testing.T) {
 
 func TestGetLinkHandler(t *testing.T) {
 	s := CreateNewServer()
-	s.MountHandlers()
+	s.Prepare()
 
 	originalLink := "https://ya.ru"
 	req1 := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(originalLink))
