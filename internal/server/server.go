@@ -21,6 +21,7 @@ func (s *Server) MountHandlers() {
 
 	s.Router.Post("/", AddLinkHandler)
 	s.Router.Get("/{linkId}", GetLinkHandler)
+	s.Router.Post("/api/shorten", ShortenHandler)
 
 }
 func (s *Server) InitLogger() {

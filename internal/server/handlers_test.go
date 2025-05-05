@@ -1,11 +1,12 @@
 package server
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
@@ -19,7 +20,6 @@ func TestAddLinkHandler(t *testing.T) {
 	s.Prepare()
 	type want struct {
 		stausCode     int
-		response      string
 		minBodyLength int
 	}
 	type params struct {
@@ -32,7 +32,7 @@ func TestAddLinkHandler(t *testing.T) {
 		params params
 		want   want
 	}{
-		{name: "1 post", params: params{method: "POST", url: "/", body: "https://ya.ru"}, want: want{stausCode: http.StatusCreated}},
+		{name: "happy path", params: params{method: http.MethodPost, url: "/", body: "https://ya.ru"}, want: want{stausCode: http.StatusCreated}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,4 +63,40 @@ func TestGetLinkHandler(t *testing.T) {
 	assert.Equal(t, http.StatusTemporaryRedirect, res.Code)
 	assert.Equal(t, originalLink, header)
 
+}
+
+func TestShortenHandler(t *testing.T) {
+	s := CreateNewServer()
+	s.Prepare()
+
+	tests := []struct {
+		name      string
+		reqBody   string
+		resStatus int
+		resLen    int
+	}{
+		{name: "happy path", reqBody: "{\"url\": \"https://mail.ru\"}", resStatus: http.StatusCreated, resLen: 10},
+		{name: "empty body", reqBody: "", resStatus: http.StatusBadRequest},
+		{name: "empty url", reqBody: "{\"url\": \"\"}", resStatus: http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqBodyBytes := strings.NewReader(tt.reqBody)
+			req := httptest.NewRequest(http.MethodPost, "/api/shorten", reqBodyBytes)
+			req.Header.Set("Content-Type", "application/json")
+
+			res := executeRequest(req, s)
+
+			assert.Equal(t, tt.resStatus, res.Code)
+			if res.Code == http.StatusCreated {
+				resString := res.Body.String()
+				resLen := len(resString)
+				assert.GreaterOrEqual(t, resLen, tt.resLen)
+
+				h := res.Header().Get("Content-Type")
+				assert.Equal(t, "application/json", h)
+			}
+
+		})
+	}
 }

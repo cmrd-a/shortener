@@ -1,11 +1,12 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/cmrd-a/shortener/internal/config"
 	"github.com/cmrd-a/shortener/internal/logger"
 	"github.com/cmrd-a/shortener/internal/server"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 func main() {
