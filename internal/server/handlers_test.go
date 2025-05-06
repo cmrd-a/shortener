@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"compress/gzip"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -74,17 +76,28 @@ func TestShortenHandler(t *testing.T) {
 		reqBody   string
 		resStatus int
 		resLen    int
+		compress  bool
 	}{
-		{name: "happy path", reqBody: "{\"url\": \"https://mail.ru\"}", resStatus: http.StatusCreated, resLen: 10},
+		{name: "happy path without compress", reqBody: "{\"url\": \"https://mail.ru\"}", resStatus: http.StatusCreated, resLen: 10, compress: false},
+		{name: "happy path with compress", reqBody: "{\"url\": \"https://mail.ru\"}", resStatus: http.StatusCreated, resLen: 10, compress: true},
 		{name: "empty body", reqBody: "", resStatus: http.StatusBadRequest},
 		{name: "empty url", reqBody: "{\"url\": \"\"}", resStatus: http.StatusBadRequest},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reqBodyBytes := strings.NewReader(tt.reqBody)
-			req := httptest.NewRequest(http.MethodPost, "/api/shorten", reqBodyBytes)
+			var req *http.Request
+			if tt.compress == true {
+				var buf bytes.Buffer
+				zw := gzip.NewWriter(&buf)
+				_, _ = zw.Write([]byte(tt.reqBody))
+				_ = zw.Close()
+				req = httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(buf.Bytes()))
+				req.Header.Set("Accept-Encoding", "gzip")
+				req.Header.Set("Content-Encoding", "gzip")
+			} else {
+				req = httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(tt.reqBody))
+			}
 			req.Header.Set("Content-Type", "application/json")
-
 			res := executeRequest(req, s)
 
 			assert.Equal(t, tt.resStatus, res.Code)

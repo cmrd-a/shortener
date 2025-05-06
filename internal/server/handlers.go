@@ -56,7 +56,7 @@ func GetLinkHandler(res http.ResponseWriter, req *http.Request) {
 
 func ShortenHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Header.Get("Content-Type") != "application/json" {
-		res.WriteHeader(http.StatusBadGateway)
+		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	reqJSON := &ShortenRequest{}
