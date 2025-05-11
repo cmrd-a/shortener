@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cmrd-a/shortener/internal/config"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +20,7 @@ func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
 }
 
 func TestAddLinkHandler(t *testing.T) {
+	config.ParseFlags()
 	s := CreateNewServer()
 	s.Prepare()
 	type want struct {

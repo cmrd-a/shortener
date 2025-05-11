@@ -9,11 +9,13 @@ import (
 var ServerAddress string
 var BaseURL string
 var LogLevel string
+var FileStoragePath string
 
 type config struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
-	LogLevel      string `env:"LOG_LEVEL"`
+	ServerAddress   string `env:"SERVER_ADDRESS"`
+	BaseURL         string `env:"BASE_URL"`
+	LogLevel        string `env:"LOG_LEVEL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func ParseFlags() {
@@ -26,6 +28,7 @@ func ParseFlags() {
 	flag.StringVar(&ServerAddress, "a", ":8080", "address and port to run server")
 	flag.StringVar(&BaseURL, "b", "http://localhost:8080", "base domain for short links")
 	flag.StringVar(&LogLevel, "l", "info", "log level")
+	flag.StringVar(&FileStoragePath, "f", "storage.txt", "persistent storage file path")
 	flag.Parse()
 
 	if cfg.ServerAddress != "" {
@@ -36,5 +39,8 @@ func ParseFlags() {
 	}
 	if cfg.LogLevel != "" {
 		LogLevel = cfg.LogLevel
+	}
+	if cfg.FileStoragePath != "" {
+		FileStoragePath = cfg.FileStoragePath
 	}
 }
