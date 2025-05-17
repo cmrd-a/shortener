@@ -32,7 +32,7 @@ func NewConfig(parse bool) *Config {
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base domain for short links")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.FileStoragePath, "f", "storage.txt", "persistent storage file path")
-	if parse == true {
+	if parse {
 		flag.Parse()
 	}
 

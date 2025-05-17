@@ -9,13 +9,14 @@ import (
 	"github.com/cmrd-a/shortener/internal/server"
 	"github.com/cmrd-a/shortener/internal/service"
 	"github.com/cmrd-a/shortener/internal/storage"
+
 	"go.uber.org/zap"
 )
 
 func main() {
 	cfg := config.NewConfig(true)
 	zl := logger.NewLogger(cfg.LogLevel)
-	URLService := service.NewURLService(cfg.BaseURL, storage.NewFileRepository(cfg.FileStoragePath))
+	URLService := service.NewURLService(cfg.BaseURL, storage.NewFileRepository(cfg.FileStoragePath, storage.NewInMemoryRepository()))
 	s := server.NewServer(zl, URLService)
 	defer func(Log *zap.Logger) {
 		err := Log.Sync()

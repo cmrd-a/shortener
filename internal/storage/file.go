@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 	"strings"
 )
@@ -16,14 +17,29 @@ type StoredURL struct {
 }
 
 type FileRepository struct {
-	path string
+	path  string
+	cache *InMemoryRepository
 }
 
-func NewFileRepository(path string) *FileRepository {
-	return &FileRepository{path}
+func NewFileRepository(path string, cache *InMemoryRepository) *FileRepository {
+	r := &FileRepository{path, cache}
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return r
+	}
+	data, err := os.ReadFile(r.path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, str := range strings.Split(string(data), "\n") {
+		s := StoredURL{}
+		s.UnmarshalJSON([]byte(str))
+		r.cache.Add(s.ID, s.OriginalURL)
+	}
+	return r
 }
 
 func (r FileRepository) Add(key, value string) error {
+	r.cache.Add(key, value)
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
@@ -38,16 +54,6 @@ func (r FileRepository) Add(key, value string) error {
 
 }
 func (r FileRepository) Get(key string) (string, error) {
-	data, err := os.ReadFile(r.path)
-	if err != nil {
-		return "", err
-	}
-	for _, str := range strings.Split(string(data), "\n") {
-		s := StoredURL{}
-		s.UnmarshalJSON([]byte(str))
-		if s.ID == key {
-			return s.OriginalURL, nil
-		}
-	}
-	return "", errors.New("url not found")
+	url, err := r.cache.Get(key)
+	return url, err
 }
