@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"log"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -22,7 +23,7 @@ func ParseFlags() {
 	var cfg config
 	err := env.Parse(&cfg)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	flag.StringVar(&ServerAddress, "a", ":8080", "address and port to run server")
