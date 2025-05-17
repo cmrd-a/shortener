@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cmrd-a/shortener/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -30,28 +29,29 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
+func RequestResponseLogger(log *zap.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			responseData := &responseData{
+				status: 0,
+				size:   0,
+			}
+			lw := loggingResponseWriter{
+				ResponseWriter: w,
+				responseData:   responseData,
+			}
 
-func RequestResponseLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		responseData := &responseData{
-			status: 0,
-			size:   0,
-		}
-		lw := loggingResponseWriter{
-			ResponseWriter: w,
-			responseData:   responseData,
-		}
+			next.ServeHTTP(&lw, r)
 
-		next.ServeHTTP(&lw, r)
-
-		duration := time.Since(start)
-		logger.Log.Info("HTTP request served",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.String("duration", duration.String()),
-			zap.String("status", strconv.Itoa(responseData.status)),
-			zap.String("size", strconv.Itoa(responseData.size)),
-		)
-	})
+			duration := time.Since(start)
+			log.Info("HTTP request served",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.String("duration", duration.String()),
+				zap.String("status", strconv.Itoa(responseData.status)),
+				zap.String("size", strconv.Itoa(responseData.size)),
+			)
+		})
+	}
 }

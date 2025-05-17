@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"github.com/cmrd-a/shortener/internal/config"
-
+	"github.com/cmrd-a/shortener/internal/logger"
+	"github.com/cmrd-a/shortener/internal/service"
+	"github.com/cmrd-a/shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,10 +21,10 @@ func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
 	return rr
 }
 
+var cfg = config.NewConfig()
+var server = NewServer(logger.NewLogger(cfg.LogLevel), service.NewURLService(cfg.BaseURL, storage.NewFileRepository(cfg.FileStoragePath)))
+
 func TestAddLinkHandler(t *testing.T) {
-	config.ParseFlags()
-	s := CreateNewServer()
-	s.Prepare()
 	type want struct {
 		stausCode     int
 		minBodyLength int
@@ -43,7 +45,7 @@ func TestAddLinkHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			bodyBytes := strings.NewReader(tt.params.body)
 			req := httptest.NewRequest(tt.params.method, tt.params.url, bodyBytes)
-			res := executeRequest(req, s)
+			res := executeRequest(req, server)
 			resBody := res.Body.String()
 
 			assert.Equal(t, tt.want.stausCode, res.Code)
@@ -53,16 +55,13 @@ func TestAddLinkHandler(t *testing.T) {
 }
 
 func TestGetLinkHandler(t *testing.T) {
-	s := CreateNewServer()
-	s.Prepare()
-
 	originalLink := "https://ya.ru"
 	req1 := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(originalLink))
-	res1 := executeRequest(req1, s)
+	res1 := executeRequest(req1, server)
 	linkID := res1.Body.String()
 
 	req := httptest.NewRequest(http.MethodGet, linkID, nil)
-	res := executeRequest(req, s)
+	res := executeRequest(req, server)
 	header := res.Header().Get("location")
 
 	assert.Equal(t, http.StatusTemporaryRedirect, res.Code)
@@ -71,9 +70,6 @@ func TestGetLinkHandler(t *testing.T) {
 }
 
 func TestShortenHandler(t *testing.T) {
-	s := CreateNewServer()
-	s.Prepare()
-
 	tests := []struct {
 		name      string
 		reqBody   string
@@ -101,7 +97,7 @@ func TestShortenHandler(t *testing.T) {
 				req = httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(tt.reqBody))
 			}
 			req.Header.Set("Content-Type", "application/json")
-			res := executeRequest(req, s)
+			res := executeRequest(req, server)
 
 			assert.Equal(t, tt.resStatus, res.Code)
 			if res.Code == http.StatusCreated {

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"os"
 	"strings"
-
-	"github.com/cmrd-a/shortener/internal/config"
 )
 
 //go:generate easyjson file.go
@@ -17,14 +15,16 @@ type StoredURL struct {
 	OriginalURL string `json:"original_url"`
 }
 
-type FileRepository struct{}
-
-func NewFileRepository() *FileRepository {
-	return &FileRepository{}
+type FileRepository struct {
+	path string
 }
 
-func (a FileRepository) Add(key, value string) error {
-	file, _ := os.OpenFile(config.FileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+func NewFileRepository(path string) *FileRepository {
+	return &FileRepository{path}
+}
+
+func (r FileRepository) Add(key, value string) error {
+	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
 	s := StoredURL{key, value}
@@ -37,8 +37,8 @@ func (a FileRepository) Add(key, value string) error {
 	return err
 
 }
-func (a FileRepository) Get(key string) (string, error) {
-	data, err := os.ReadFile(config.FileStoragePath)
+func (r FileRepository) Get(key string) (string, error) {
+	data, err := os.ReadFile(r.path)
 	if err != nil {
 		return "", err
 	}

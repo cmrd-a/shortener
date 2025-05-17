@@ -5,91 +5,91 @@ import (
 	"net/http"
 
 	"github.com/cmrd-a/shortener/internal/service"
-	"github.com/cmrd-a/shortener/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mailru/easyjson"
 )
 
-//var URLService = service.NewURLService(storage.NewInMemoryRepository())
-
-var URLService = service.NewURLService(storage.NewFileRepository())
-
-func AddLinkHandler(res http.ResponseWriter, req *http.Request) {
-	bodyBytes, err := io.ReadAll(req.Body)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-	originalLink := string(bodyBytes)
-	if len(originalLink) == 0 {
-		http.Error(res, "url is empty", http.StatusBadRequest)
-		return
-	}
-	shortLink, err := URLService.Shorten(originalLink)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res.WriteHeader(http.StatusCreated)
-	res.Header().Set("Content-Type", "text/plain")
-	_, err = res.Write([]byte(shortLink))
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+func AddLinkHandler(service *service.URLService) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		bodyBytes, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		originalLink := string(bodyBytes)
+		if len(originalLink) == 0 {
+			http.Error(res, "url is empty", http.StatusBadRequest)
+			return
+		}
+		shortLink, err := service.Shorten(originalLink)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		res.WriteHeader(http.StatusCreated)
+		res.Header().Set("Content-Type", "text/plain")
+		_, err = res.Write([]byte(shortLink))
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
-func GetLinkHandler(res http.ResponseWriter, req *http.Request) {
-	ID := chi.URLParam(req, "linkId")
-	if len(ID) == 0 {
-		http.Error(res, "url is empty", http.StatusBadRequest)
-		return
+func GetLinkHandler(service *service.URLService) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		ID := chi.URLParam(req, "linkId")
+		if len(ID) == 0 {
+			http.Error(res, "url is empty", http.StatusBadRequest)
+			return
+		}
+		original, err := service.GetOriginal(ID)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Redirect(res, req, original, http.StatusTemporaryRedirect)
 	}
-	original, err := URLService.GetOriginal(ID)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-	http.Redirect(res, req, original, http.StatusTemporaryRedirect)
 }
 
-func ShortenHandler(res http.ResponseWriter, req *http.Request) {
-	if req.Header.Get("Content-Type") != "application/json" {
-		http.Error(res, "only Content-Type:application/json is supported", http.StatusBadRequest)
-		return
-	}
-	reqJSON := &ShortenRequest{}
-	err := easyjson.UnmarshalFromReader(req.Body, reqJSON)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if len(reqJSON.URL) == 0 {
-		http.Error(res, "url is empty", http.StatusBadRequest)
-		return
-	}
+func ShortenHandler(service *service.URLService) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Content-Type") != "application/json" {
+			http.Error(res, "only Content-Type:application/json is supported", http.StatusBadRequest)
+			return
+		}
+		reqJSON := &ShortenRequest{}
+		err := easyjson.UnmarshalFromReader(req.Body, reqJSON)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if len(reqJSON.URL) == 0 {
+			http.Error(res, "url is empty", http.StatusBadRequest)
+			return
+		}
 
-	shortLink, err := URLService.Shorten(reqJSON.URL)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		shortLink, err := service.Shorten(reqJSON.URL)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resJSON := &ShortenResponse{Result: shortLink}
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+
+		resBytes, err := resJSON.MarshalJSON()
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = res.Write(resBytes)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
-
-	resJSON := &ShortenResponse{Result: shortLink}
-
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
-
-	resBytes, err := resJSON.MarshalJSON()
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	_, err = res.Write(resBytes)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 }

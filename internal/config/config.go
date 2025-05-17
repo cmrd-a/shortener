@@ -7,41 +7,46 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
-var ServerAddress string
-var BaseURL string
-var LogLevel string
-var FileStoragePath string
-
-type config struct {
+type Config struct {
+	ServerAddress   string
+	BaseURL         string
+	LogLevel        string
+	FileStoragePath string
+}
+type envConfig struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	BaseURL         string `env:"BASE_URL"`
 	LogLevel        string `env:"LOG_LEVEL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-func ParseFlags() {
-	var cfg config
-	err := env.Parse(&cfg)
+func NewConfig() *Config {
+	cfg := &Config{}
+	var envCfg envConfig
+	err := env.Parse(&envCfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	flag.StringVar(&ServerAddress, "a", ":8080", "address and port to run server")
-	flag.StringVar(&BaseURL, "b", "http://localhost:8080", "base domain for short links")
-	flag.StringVar(&LogLevel, "l", "info", "log level")
-	flag.StringVar(&FileStoragePath, "f", "storage.txt", "persistent storage file path")
-	flag.Parse()
+	flag.StringVar(&cfg.ServerAddress, "a", ":8080", "address and port to run server")
+	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base domain for short links")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
+	flag.StringVar(&cfg.FileStoragePath, "f", "storage.txt", "persistent storage file path")
+	if flag.Lookup("test.v") != nil {
+		flag.Parse()
+	}
 
-	if cfg.ServerAddress != "" {
-		ServerAddress = cfg.ServerAddress
+	if envCfg.ServerAddress != "" {
+		cfg.ServerAddress = envCfg.ServerAddress
 	}
-	if cfg.BaseURL != "" {
-		BaseURL = cfg.BaseURL
+	if envCfg.BaseURL != "" {
+		cfg.BaseURL = envCfg.BaseURL
 	}
-	if cfg.LogLevel != "" {
-		LogLevel = cfg.LogLevel
+	if envCfg.LogLevel != "" {
+		cfg.LogLevel = envCfg.LogLevel
 	}
-	if cfg.FileStoragePath != "" {
-		FileStoragePath = cfg.FileStoragePath
+	if envCfg.FileStoragePath != "" {
+		cfg.FileStoragePath = envCfg.FileStoragePath
 	}
+	return cfg
 }
