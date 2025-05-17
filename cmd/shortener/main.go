@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	cfg := config.NewConfig()
+	cfg := config.NewConfig(true)
 	zl := logger.NewLogger(cfg.LogLevel)
 	URLService := service.NewURLService(cfg.BaseURL, storage.NewFileRepository(cfg.FileStoragePath))
 	s := server.NewServer(zl, URLService)

@@ -21,8 +21,8 @@ func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
 	return rr
 }
 
-var cfg = config.NewConfig()
-var server = NewServer(logger.NewLogger(cfg.LogLevel), service.NewURLService(cfg.BaseURL, storage.NewFileRepository(cfg.FileStoragePath)))
+var cfg = config.NewConfig(false)
+var server = NewServer(logger.NewLogger(cfg.LogLevel), service.NewURLService(cfg.BaseURL, storage.NewFileRepository(cfg.FileStoragePath, storage.NewInMemoryRepository())))
 
 func TestAddLinkHandler(t *testing.T) {
 	type want struct {
@@ -88,8 +88,8 @@ func TestShortenHandler(t *testing.T) {
 			if tt.compress == true {
 				var buf bytes.Buffer
 				zw := gzip.NewWriter(&buf)
-				_, _ = zw.Write([]byte(tt.reqBody))
-				_ = zw.Close()
+				zw.Write([]byte(tt.reqBody))
+				zw.Close()
 				req = httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(buf.Bytes()))
 				req.Header.Set("Accept-Encoding", "gzip")
 				req.Header.Set("Content-Encoding", "gzip")

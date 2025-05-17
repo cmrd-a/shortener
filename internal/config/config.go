@@ -20,7 +20,7 @@ type envConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-func NewConfig() *Config {
+func NewConfig(parse bool) *Config {
 	cfg := &Config{}
 	var envCfg envConfig
 	err := env.Parse(&envCfg)
@@ -32,7 +32,7 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base domain for short links")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.FileStoragePath, "f", "storage.txt", "persistent storage file path")
-	if flag.Lookup("test.v") != nil {
+	if parse == true {
 		flag.Parse()
 	}
 
