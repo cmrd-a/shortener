@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"os"
 	"strings"
 )
@@ -21,21 +20,21 @@ type FileRepository struct {
 	cache *InMemoryRepository
 }
 
-func NewFileRepository(path string, cache *InMemoryRepository) *FileRepository {
+func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository, error) {
 	r := &FileRepository{path, cache}
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return r
+		return r, nil
 	}
 	data, err := os.ReadFile(r.path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	for _, str := range strings.Split(string(data), "\n") {
 		s := StoredURL{}
 		s.UnmarshalJSON([]byte(str))
 		r.cache.Add(s.ID, s.OriginalURL)
 	}
-	return r
+	return r, nil
 }
 
 func (r FileRepository) Add(key, value string) error {

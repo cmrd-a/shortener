@@ -4,13 +4,16 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/cmrd-a/shortener/internal/service"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/mailru/easyjson"
 )
 
-func AddLinkHandler(service *service.URLService) func(http.ResponseWriter, *http.Request) {
+type Service interface {
+	Shorten(string) (string, error)
+	GetOriginal(string) (string, error)
+}
+
+func AddLinkHandler(service Service) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -37,7 +40,7 @@ func AddLinkHandler(service *service.URLService) func(http.ResponseWriter, *http
 	}
 }
 
-func GetLinkHandler(service *service.URLService) func(http.ResponseWriter, *http.Request) {
+func GetLinkHandler(service Service) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ID := chi.URLParam(req, "linkId")
 		if len(ID) == 0 {
@@ -53,7 +56,7 @@ func GetLinkHandler(service *service.URLService) func(http.ResponseWriter, *http
 	}
 }
 
-func ShortenHandler(service *service.URLService) func(http.ResponseWriter, *http.Request) {
+func ShortenHandler(service Service) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {
 			http.Error(res, "only Content-Type:application/json is supported", http.StatusBadRequest)
