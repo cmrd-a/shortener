@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mailru/easyjson"
+
+	"github.com/cmrd-a/shortener/internal/storage"
 )
 
 type Service interface {
@@ -94,5 +96,16 @@ func ShortenHandler(service Service) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func PingHandler(dsn string) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		err := storage.Check(dsn)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		res.WriteHeader(http.StatusOK)
 	}
 }

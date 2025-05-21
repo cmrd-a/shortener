@@ -12,12 +12,14 @@ type Config struct {
 	BaseURL         string
 	LogLevel        string
 	FileStoragePath string
+	DatabaseDSN     string
 }
 type envConfig struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	BaseURL         string `env:"BASE_URL"`
 	LogLevel        string `env:"LOG_LEVEL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func NewConfig(parse bool) *Config {
@@ -32,6 +34,7 @@ func NewConfig(parse bool) *Config {
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base domain for short links")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.FileStoragePath, "f", "storage.txt", "persistent storage file path")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "postgres connection string")
 	if parse {
 		flag.Parse()
 	}
@@ -47,6 +50,9 @@ func NewConfig(parse bool) *Config {
 	}
 	if envCfg.FileStoragePath != "" {
 		cfg.FileStoragePath = envCfg.FileStoragePath
+	}
+	if envCfg.DatabaseDSN != "" {
+		cfg.DatabaseDSN = envCfg.DatabaseDSN
 	}
 	return cfg
 }

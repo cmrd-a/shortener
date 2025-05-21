@@ -30,7 +30,7 @@ func main() {
 	} else {
 		svc = service.NewURLService(cfg.BaseURL, repo)
 	}
-	s := server.NewServer(zl, svc)
+	s := server.NewServer(zl, svc, cfg.DatabaseDSN)
 	defer func(Log *zap.Logger) {
 		err := Log.Sync()
 		if err != nil {
