@@ -37,12 +37,12 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	return r, nil
 }
 
-func (r FileRepository) Add(key, value string) error {
-	r.cache.Add(key, value)
+func (r FileRepository) Add(short, original string) error {
+	r.cache.Add(short, original)
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
-	s := StoredURL{key, value}
+	s := StoredURL{short, original}
 	data, err := json.Marshal(&s)
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (r FileRepository) Add(key, value string) error {
 	return err
 
 }
-func (r FileRepository) Get(key string) (string, error) {
-	url, err := r.cache.Get(key)
+func (r FileRepository) Get(short string) (string, error) {
+	url, err := r.cache.Get(short)
 	return url, err
 }

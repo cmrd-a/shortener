@@ -3,20 +3,18 @@ package service
 import (
 	"fmt"
 	"math/rand"
+
+	"github.com/cmrd-a/shortener/internal/storage"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-type Repository interface {
-	Get(key string) (value string, err error)
-	Add(key, value string) error
-}
 type URLService struct {
 	baseURL    string
-	repository Repository
+	repository storage.Repository
 }
 
-func NewURLService(baseURL string, repo Repository) *URLService {
+func NewURLService(baseURL string, repo storage.Repository) *URLService {
 	return &URLService{baseURL, repo}
 }
 

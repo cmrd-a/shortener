@@ -20,16 +20,11 @@ func main() {
 		log.Printf("ERROR: failed to initialize logger %s \n", err)
 		zl = zap.NewNop()
 	}
-	cache := storage.NewInMemoryRepository()
-
-	repo, err := storage.NewFileRepository(cfg.FileStoragePath, cache)
-	var svc server.Service
+	repo, err := storage.MakeRepository(cfg)
 	if err != nil {
-		zl.Error("ERROR: failed to initialize file repository ", zap.Error(err))
-		svc = service.NewURLService(cfg.BaseURL, cache)
-	} else {
-		svc = service.NewURLService(cfg.BaseURL, repo)
+		log.Fatalf("ERROR: failed to initialize repository %s \n", err)
 	}
+	svc := service.NewURLService(cfg.BaseURL, repo)
 	s := server.NewServer(zl, svc, cfg.DatabaseDSN)
 	defer func(Log *zap.Logger) {
 		err := Log.Sync()

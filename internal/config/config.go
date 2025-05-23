@@ -33,7 +33,7 @@ func NewConfig(parse bool) *Config {
 	flag.StringVar(&cfg.ServerAddress, "a", ":8080", "address and port to run server")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base domain for short links")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
-	flag.StringVar(&cfg.FileStoragePath, "f", "storage.txt", "persistent storage file path")
+	flag.StringVar(&cfg.FileStoragePath, "f", "", "persistent storage file path")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "postgres connection string")
 	if parse {
 		flag.Parse()

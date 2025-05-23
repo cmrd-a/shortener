@@ -12,15 +12,15 @@ func NewInMemoryRepository() *InMemoryRepository {
 	return &InMemoryRepository{store: make(map[string]string)}
 }
 
-func (a InMemoryRepository) Get(key string) (string, error) {
-	value, ok := a.store[key]
+func (a InMemoryRepository) Get(short string) (string, error) {
+	original, ok := a.store[short]
 	if !ok {
 		return "", errors.New("url not found")
 	}
-	return value, nil
+	return original, nil
 }
 
-func (a InMemoryRepository) Add(key, value string) error {
-	a.store[key] = value
+func (a InMemoryRepository) Add(short, original string) error {
+	a.store[short] = original
 	return nil
 }
