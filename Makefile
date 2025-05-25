@@ -4,8 +4,9 @@ build:
 test:
 	go test ./... -v
 
-gen:
+generate:
 	go generate ./...
+	make format
 
 format:
 	goimports -l -w .

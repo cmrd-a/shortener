@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -37,6 +38,11 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	return r, nil
 }
 
+func (r FileRepository) Get(short string) (string, error) {
+	url, err := r.cache.Get(short)
+	return url, err
+}
+
 func (r FileRepository) Add(short, original string) error {
 	r.cache.Add(short, original)
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
@@ -52,7 +58,29 @@ func (r FileRepository) Add(short, original string) error {
 	return err
 
 }
-func (r FileRepository) Get(short string) (string, error) {
-	url, err := r.cache.Get(short)
-	return url, err
+
+func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error {
+	r.cache.AddBatch(ctx, b)
+	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	defer file.Close()
+
+	var result []byte
+	for short, original := range b {
+		data, err := json.Marshal(StoredURL{short, original})
+		if err != nil {
+			return err
+		}
+		data = append(data, '\n')
+		result = append(result, data...)
+	}
+
+	_, err := file.Write(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r FileRepository) Ping(ctx context.Context) error {
+	return nil
 }

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 )
 
@@ -22,5 +23,15 @@ func (a InMemoryRepository) Get(short string) (string, error) {
 
 func (a InMemoryRepository) Add(short, original string) error {
 	a.store[short] = original
+	return nil
+}
+func (a InMemoryRepository) AddBatch(ctx context.Context, b map[string]string) error {
+	for short, original := range b {
+		a.store[short] = original
+	}
+	return nil
+}
+
+func (a InMemoryRepository) Ping(ctx context.Context) error {
 	return nil
 }

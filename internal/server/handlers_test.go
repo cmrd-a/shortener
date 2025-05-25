@@ -24,7 +24,7 @@ func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
 var cfg = config.NewConfig(false)
 var zl, _ = logger.NewLogger(cfg.LogLevel)
 var repo, _ = storage.MakeRepository(cfg)
-var server = NewServer(zl, service.NewURLService(cfg.BaseURL, repo), cfg.DatabaseDSN)
+var server = NewServer(zl, service.NewURLService(cfg.BaseURL, repo))
 
 func TestAddLinkHandler(t *testing.T) {
 	type want struct {
