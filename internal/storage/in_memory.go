@@ -21,7 +21,19 @@ func (a InMemoryRepository) Get(short string) (string, error) {
 	return original, nil
 }
 
+func (a InMemoryRepository) CheckOriginalExist(original string) (string, bool) {
+	for key, value := range a.store {
+		if value == original {
+			return key, true
+		}
+	}
+	return "", false
+}
+
 func (a InMemoryRepository) Add(short, original string) error {
+	if oldShort, ok := a.CheckOriginalExist(original); ok {
+		return NewOriginalExistError(oldShort)
+	}
 	a.store[short] = original
 	return nil
 }

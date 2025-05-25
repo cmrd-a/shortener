@@ -44,7 +44,10 @@ func (r FileRepository) Get(short string) (string, error) {
 }
 
 func (r FileRepository) Add(short, original string) error {
-	r.cache.Add(short, original)
+	err := r.cache.Add(short, original)
+	if err != nil {
+		return err
+	}
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 

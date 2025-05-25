@@ -79,8 +79,8 @@ func TestShortenHandler(t *testing.T) {
 		resLen    int
 		compress  bool
 	}{
-		{name: "happy path without compress", reqBody: "{\"url\": \"https://mail.ru\"}", resStatus: http.StatusCreated, resLen: 10, compress: false},
-		{name: "happy path with compress", reqBody: "{\"url\": \"https://mail.ru\"}", resStatus: http.StatusCreated, resLen: 10, compress: true},
+		{name: "happy path without compress", reqBody: "{\"url\": \"https://protobuf.dev\"}", resStatus: http.StatusCreated, resLen: 10, compress: false},
+		{name: "happy path with compress", reqBody: "{\"url\": \"https://microservices.io\"}", resStatus: http.StatusCreated, resLen: 10, compress: true},
 		{name: "empty body", reqBody: "", resStatus: http.StatusBadRequest},
 		{name: "empty url", reqBody: "{\"url\": \"\"}", resStatus: http.StatusBadRequest},
 	}

@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math/rand"
 
 	"github.com/cmrd-a/shortener/internal/storage"
+
+	"math/rand"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -34,12 +36,16 @@ func (s *URLService) createShort() string {
 }
 
 func (s *URLService) Shorten(originalURL string) (string, error) {
-	id := s.createShort()
-	err := s.repository.Add(id, originalURL)
+	short := s.createShort()
+	err := s.repository.Add(short, originalURL)
+	var myErr *storage.OriginalExistError
+	if errors.As(err, &myErr) {
+		return "", NewOriginalExistError(fmt.Sprintf("%s/%s", s.baseURL, myErr.Short))
+	}
 	if err != nil {
 		return "", err
 	}
-	shortURL := fmt.Sprintf("%s/%s", s.baseURL, id)
+	shortURL := fmt.Sprintf("%s/%s", s.baseURL, short)
 	return shortURL, nil
 }
 

@@ -1,10 +1,9 @@
 package server
 
 import (
+	"errors"
 	"io"
 	"net/http"
-
-	"github.com/mailru/easyjson/jlexer"
 
 	"github.com/cmrd-a/shortener/internal/service"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/mailru/easyjson"
 )
 
-func AddLinkHandler(service service.Service) func(http.ResponseWriter, *http.Request) {
+func AddLinkHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -24,7 +23,13 @@ func AddLinkHandler(service service.Service) func(http.ResponseWriter, *http.Req
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-		shortLink, err := service.Shorten(originalLink)
+		shortLink, err := svc.Shorten(originalLink)
+		var alreadyExistError *service.OriginalExistError
+		if errors.As(err, &alreadyExistError) {
+			res.WriteHeader(http.StatusConflict)
+			res.Write([]byte(err.Error()))
+			return
+		}
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -39,14 +44,14 @@ func AddLinkHandler(service service.Service) func(http.ResponseWriter, *http.Req
 	}
 }
 
-func GetLinkHandler(service service.Service) func(http.ResponseWriter, *http.Request) {
+func GetLinkHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ID := chi.URLParam(req, "linkId")
 		if len(ID) == 0 {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-		original, err := service.GetOriginal(ID)
+		original, err := svc.GetOriginal(ID)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
@@ -55,7 +60,7 @@ func GetLinkHandler(service service.Service) func(http.ResponseWriter, *http.Req
 	}
 }
 
-func ShortenHandler(service service.Service) func(http.ResponseWriter, *http.Request) {
+func ShortenHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {
 			http.Error(res, "only Content-Type:application/json is supported", http.StatusBadRequest)
@@ -72,7 +77,19 @@ func ShortenHandler(service service.Service) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		shortLink, err := service.Shorten(reqJSON.URL)
+		shortLink, err := svc.Shorten(reqJSON.URL)
+		var alreadyExistError *service.OriginalExistError
+		if errors.As(err, &alreadyExistError) {
+			body, err := ShortenResponse{Result: alreadyExistError.Short}.MarshalJSON()
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+			}
+			res.Header().Set("Content-Type", "application/json")
+			res.WriteHeader(http.StatusConflict)
+
+			res.Write(body)
+			return
+		}
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -103,36 +120,39 @@ func ShortenBatchHandler(svc service.Service) func(http.ResponseWriter, *http.Re
 			return
 		}
 		var reqJSON ShortenBatchRequest
-		buffer := make([]byte, req.ContentLength)
-		req.Body.Read(buffer)
-		lexer := jlexer.Lexer{Data: buffer}
-		reqJSON.UnmarshalEasyJSON(&lexer)
-		if err := lexer.Error(); err != nil {
+		err := easyjson.UnmarshalFromReader(req.Body, &reqJSON)
+		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
-
 		if len(reqJSON) == 0 {
 			http.Error(res, "urls is empty", http.StatusBadRequest)
 			return
 		}
-		mapForSvc := make(map[string]string, len(reqJSON))
-		// todo: проверка на уникальность corr id
-		for _, reqURL := range reqJSON {
-			if reqURL.OriginalURL == "" || reqURL.CorrelationID == "" {
+		corrOrig := make(map[string]string, len(reqJSON))
+		for _, reqItem := range reqJSON {
+			if reqItem.OriginalURL == "" || reqItem.CorrelationID == "" {
 				http.Error(res, "original_url or correlation_id is empty", http.StatusBadRequest)
 				return
 			}
-			mapForSvc[reqURL.CorrelationID] = reqURL.OriginalURL
+			if _, ok := corrOrig[reqItem.CorrelationID]; ok {
+				http.Error(res, "duplicated correlation_id"+reqItem.CorrelationID, http.StatusBadRequest)
+			}
+			for _, original := range corrOrig {
+				if original == reqItem.OriginalURL {
+					http.Error(res, "duplicates original_url"+reqItem.OriginalURL, http.StatusBadRequest)
+				}
+			}
+			corrOrig[reqItem.CorrelationID] = reqItem.OriginalURL
 		}
 
-		shortenMap, err := svc.ShortenBatch(req.Context(), mapForSvc)
+		corrShort, err := svc.ShortenBatch(req.Context(), corrOrig)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		resJSON := make(ShortenBatchResponse, 0, len(shortenMap))
-		for corrID, short := range shortenMap {
+		resJSON := make(ShortenBatchResponse, 0, len(corrShort))
+		for corrID, short := range corrShort {
 			item := ShortenBatchResponseItem{CorrelationID: corrID, ShortURL: short}
 			resJSON = append(resJSON, item)
 		}

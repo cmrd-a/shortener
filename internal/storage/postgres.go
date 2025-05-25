@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -29,7 +30,7 @@ func (r PgRepository) Bootstrap() error {
 		CREATE TABLE IF NOT EXISTS url
 		(
 			id       BIGSERIAL PRIMARY KEY,
-			short    text NOT NULL UNIQUE,
+			short    text NOT NULL,
 			original text NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		)
@@ -40,6 +41,13 @@ func (r PgRepository) Bootstrap() error {
 	_, err = r.pool.Exec(context.Background(), `
 		CREATE UNIQUE INDEX IF NOT EXISTS urls_short_uindex
 		ON url (short)
+	`)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(context.Background(), `
+		CREATE UNIQUE INDEX IF NOT EXISTS urls_original_uindex
+		ON url (original)
 	`)
 	if err != nil {
 		return err
@@ -61,11 +69,27 @@ func (r PgRepository) Get(short string) (string, error) {
 }
 
 func (r PgRepository) Add(short, original string) error {
-	_, err := r.pool.Exec(context.Background(), "INSERT INTO url (short, original) VALUES ($1, $2)", short, original)
+	row := r.pool.QueryRow(context.Background(), `
+		WITH ins AS (
+			INSERT INTO url
+				(short, original)
+				VALUES ($1, $2)
+				ON CONFLICT DO NOTHING),
+			 dup AS (SELECT short
+					 FROM url
+					 WHERE original = $2)
+		SELECT short
+		FROM dup
+	`, short, original)
+	var existingShort string
+	err := row.Scan(&existingShort)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
 		return err
 	}
-	return nil
+	return NewOriginalExistError(existingShort)
 }
 
 func (r PgRepository) AddBatch(ctx context.Context, b map[string]string) error {
