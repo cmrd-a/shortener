@@ -22,7 +22,7 @@ check: build tidy format lint test
 
 cover:
 	go test ./... -coverpkg='./internal/...', -coverprofile coverage.out.tmp
-	cat coverage.out.tmp | grep -v "_easyjson.go" > coverage.out
+	cat coverage.out.tmp | grep -v "_easyjson.go\|mocks" > coverage.out
 	rm coverage.out.tmp
 
 cover-html: cover
@@ -30,3 +30,6 @@ cover-html: cover
 
 cover-cli: cover
 	go tool cover -func=coverage.out
+
+mock:
+	mockgen -destination=internal/storage/mocks/mock_repository.go -package=mocks github.com/cmrd-a/shortener/internal/storage Repository
