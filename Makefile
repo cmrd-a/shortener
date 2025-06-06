@@ -32,4 +32,5 @@ cover-cli: cover
 	go tool cover -func=coverage.out
 
 mock:
-	mockgen -destination=internal/storage/mocks/mock_repository.go -package=mocks github.com/cmrd-a/shortener/internal/storage Repository
+	mockgen -destination=internal/storage/storage_mocks/mock_repository.go -package=storage_mocks github.com/cmrd-a/shortener/internal/storage Repository
+	mockgen -destination=internal/service/service_mocks/mock_generator.go -package=service_mocks github.com/cmrd-a/shortener/internal/service Generator

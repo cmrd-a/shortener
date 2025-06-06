@@ -24,7 +24,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: failed to initialize repository %s \n", err)
 	}
-	svc := service.NewURLService(cfg.BaseURL, repo)
+	generator := service.NewShortGenerator()
+	svc := service.NewURLService(generator, cfg.BaseURL, repo)
 	s := server.NewServer(zl, svc)
 	defer func(Log *zap.Logger) {
 		err := Log.Sync()
