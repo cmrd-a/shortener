@@ -41,7 +41,7 @@ func TestAddLinkHandler(t *testing.T) {
 		params params
 		want   want
 	}{
-		{name: "happy path", params: params{method: http.MethodPost, url: "/", body: "https://ya.ru"}, want: want{stausCode: http.StatusCreated}},
+		{name: "happy_path", params: params{method: http.MethodPost, url: "/", body: "https://ya.ru"}, want: want{stausCode: http.StatusCreated}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,10 +79,10 @@ func TestShortenHandler(t *testing.T) {
 		resLen    int
 		compress  bool
 	}{
-		{name: "happy path without compress", reqBody: "{\"url\": \"https://protobuf.dev\"}", resStatus: http.StatusCreated, resLen: 10, compress: false},
-		{name: "happy path with compress", reqBody: "{\"url\": \"https://microservices.io\"}", resStatus: http.StatusCreated, resLen: 10, compress: true},
-		{name: "empty body", reqBody: "", resStatus: http.StatusBadRequest},
-		{name: "empty url", reqBody: "{\"url\": \"\"}", resStatus: http.StatusBadRequest},
+		{name: "happy_path_without_compress", reqBody: "{\"url\": \"https://protobuf.dev\"}", resStatus: http.StatusCreated, resLen: 10, compress: false},
+		{name: "happy_path_with_compress", reqBody: "{\"url\": \"https://microservices.io\"}", resStatus: http.StatusCreated, resLen: 10, compress: true},
+		{name: "empty_body", reqBody: "", resStatus: http.StatusBadRequest},
+		{name: "empty_url", reqBody: "{\"url\": \"\"}", resStatus: http.StatusBadRequest},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

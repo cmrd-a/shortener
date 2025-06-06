@@ -12,12 +12,6 @@ import (
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-type Service interface {
-	Shorten(string) (string, error)
-	ShortenBatch(context.Context, map[string]string) (map[string]string, error)
-	GetOriginal(string) (string, error)
-	Ping(context.Context) error
-}
 type URLService struct {
 	baseURL    string
 	repository storage.Repository

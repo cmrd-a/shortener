@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -11,7 +12,14 @@ import (
 	"github.com/mailru/easyjson"
 )
 
-func AddLinkHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
+type Servicer interface {
+	Shorten(string) (string, error)
+	ShortenBatch(context.Context, map[string]string) (map[string]string, error)
+	GetOriginal(string) (string, error)
+	Ping(context.Context) error
+}
+
+func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -44,7 +52,7 @@ func AddLinkHandler(svc service.Service) func(http.ResponseWriter, *http.Request
 	}
 }
 
-func GetLinkHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
+func GetLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ID := chi.URLParam(req, "linkId")
 		if len(ID) == 0 {
@@ -60,12 +68,8 @@ func GetLinkHandler(svc service.Service) func(http.ResponseWriter, *http.Request
 	}
 }
 
-func ShortenHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
+func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Content-Type") != "application/json" {
-			http.Error(res, "only Content-Type:application/json is supported", http.StatusBadRequest)
-			return
-		}
 		reqJSON := &ShortenRequest{}
 		err := easyjson.UnmarshalFromReader(req.Body, reqJSON)
 		if err != nil {
@@ -113,20 +117,16 @@ func ShortenHandler(svc service.Service) func(http.ResponseWriter, *http.Request
 	}
 }
 
-func ShortenBatchHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
+func ShortenBatchHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Content-Type") != "application/json" {
-			http.Error(res, "only Content-Type:application/json is supported", http.StatusBadRequest)
+		if req.ContentLength == 0 {
+			res.WriteHeader(http.StatusOK)
 			return
 		}
 		var reqJSON ShortenBatchRequest
 		err := easyjson.UnmarshalFromReader(req.Body, &reqJSON)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
-		}
-		if len(reqJSON) == 0 {
-			http.Error(res, "urls is empty", http.StatusBadRequest)
-			return
 		}
 		corrOrig := make(map[string]string, len(reqJSON))
 		for _, reqItem := range reqJSON {
@@ -173,11 +173,11 @@ func ShortenBatchHandler(svc service.Service) func(http.ResponseWriter, *http.Re
 	}
 }
 
-func PingHandler(svc service.Service) func(http.ResponseWriter, *http.Request) {
+func PingHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		err := svc.Ping(req.Context())
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			http.Error(res, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
 		res.WriteHeader(http.StatusOK)
