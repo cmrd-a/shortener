@@ -5,8 +5,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/cmrd-a/shortener/internal/service"
+	"github.com/cmrd-a/shortener/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mailru/easyjson"
@@ -17,6 +19,7 @@ type Servicer interface {
 	ShortenBatch(context.Context, map[string]string) (map[string]string, error)
 	GetOriginal(string) (string, error)
 	Ping(context.Context) error
+	GetUserURLs(context.Context, int64) ([]storage.StoredURL, error)
 }
 
 func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
@@ -181,5 +184,41 @@ func PingHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 		res.WriteHeader(http.StatusOK)
+	}
+}
+
+func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// TODO: Get user ID from context or authentication
+		userID, _ := strconv.Atoi(req.Header.Get("User-ID"))
+		if userID == 0 {
+			http.Error(res, "user not authenticated", http.StatusUnauthorized)
+			return
+		}
+
+		urls, err := svc.GetUserURLs(req.Context(), int64(userID))
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if len(urls) == 0 {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusOK)
+
+		// resBytes, err := easyjson.Marshal(urls)
+		// if err != nil {
+		// 	http.Error(res, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
+		// _, err = res.Write(resBytes)
+		// if err != nil {
+		// 	http.Error(res, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
 	}
 }

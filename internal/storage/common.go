@@ -11,6 +11,7 @@ type Repository interface {
 	Add(string, string) error
 	AddBatch(context.Context, map[string]string) error
 	Ping(context.Context) error
+	GetUserURLs(context.Context, int64) ([]StoredURL, error)
 }
 
 func MakeRepository(cfg *config.Config) (Repository, error) {

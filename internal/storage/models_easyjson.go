@@ -18,7 +18,7 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjson8ceb9162DecodeGithubComCmrdAShortenerInternalStorage(in *jlexer.Lexer, out *StoredURL) {
+func easyjsonD2b7633eDecodeGithubComCmrdAShortenerInternalStorage(in *jlexer.Lexer, out *StoredURL) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -37,10 +37,12 @@ func easyjson8ceb9162DecodeGithubComCmrdAShortenerInternalStorage(in *jlexer.Lex
 			continue
 		}
 		switch key {
-		case "id":
-			out.ID = string(in.String())
+		case "short_url":
+			out.ShortID = string(in.String())
 		case "original_url":
 			out.OriginalURL = string(in.String())
+		case "user_id":
+			out.UserID = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -51,19 +53,24 @@ func easyjson8ceb9162DecodeGithubComCmrdAShortenerInternalStorage(in *jlexer.Lex
 		in.Consumed()
 	}
 }
-func easyjson8ceb9162EncodeGithubComCmrdAShortenerInternalStorage(out *jwriter.Writer, in StoredURL) {
+func easyjsonD2b7633eEncodeGithubComCmrdAShortenerInternalStorage(out *jwriter.Writer, in StoredURL) {
 	out.RawByte('{')
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"id\":"
+		const prefix string = ",\"short_url\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.ID))
+		out.String(string(in.ShortID))
 	}
 	{
 		const prefix string = ",\"original_url\":"
 		out.RawString(prefix)
 		out.String(string(in.OriginalURL))
+	}
+	{
+		const prefix string = ",\"user_id\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.UserID))
 	}
 	out.RawByte('}')
 }
@@ -71,23 +78,23 @@ func easyjson8ceb9162EncodeGithubComCmrdAShortenerInternalStorage(out *jwriter.W
 // MarshalJSON supports json.Marshaler interface
 func (v StoredURL) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson8ceb9162EncodeGithubComCmrdAShortenerInternalStorage(&w, v)
+	easyjsonD2b7633eEncodeGithubComCmrdAShortenerInternalStorage(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v StoredURL) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson8ceb9162EncodeGithubComCmrdAShortenerInternalStorage(w, v)
+	easyjsonD2b7633eEncodeGithubComCmrdAShortenerInternalStorage(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *StoredURL) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson8ceb9162DecodeGithubComCmrdAShortenerInternalStorage(&r, v)
+	easyjsonD2b7633eDecodeGithubComCmrdAShortenerInternalStorage(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *StoredURL) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson8ceb9162DecodeGithubComCmrdAShortenerInternalStorage(l, v)
+	easyjsonD2b7633eDecodeGithubComCmrdAShortenerInternalStorage(l, v)
 }

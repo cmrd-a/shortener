@@ -42,7 +42,7 @@ func TestAddLinkHandler(t *testing.T) {
 		params params
 		want   want
 	}{
-		{name: "happy_path", params: params{method: http.MethodPost, url: "/", body: "https://ya.ru"}, want: want{stausCode: http.StatusCreated}},
+		{name: "happy_path", params: params{method: http.MethodPost, url: "/", body: "https://zed.dev"}, want: want{stausCode: http.StatusCreated}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

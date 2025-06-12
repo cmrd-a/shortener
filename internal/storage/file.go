@@ -8,14 +8,6 @@ import (
 	"strings"
 )
 
-//go:generate easyjson file.go
-
-//easyjson:json
-type StoredURL struct {
-	ID          string `json:"id"`
-	OriginalURL string `json:"original_url"`
-}
-
 type FileRepository struct {
 	path  string
 	cache *InMemoryRepository
@@ -30,10 +22,10 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	if err != nil {
 		return nil, err
 	}
-	for _, str := range strings.Split(string(data), "\n") {
+	for str := range strings.SplitSeq(string(data), "\n") {
 		s := StoredURL{}
 		s.UnmarshalJSON([]byte(str))
-		r.cache.Add(s.ID, s.OriginalURL)
+		r.cache.Add(s.ShortID, s.OriginalURL)
 	}
 	return r, nil
 }
@@ -51,7 +43,7 @@ func (r FileRepository) Add(short, original string) error {
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
-	s := StoredURL{short, original}
+	s := StoredURL{short, original, 0}
 	data, err := json.Marshal(&s)
 	if err != nil {
 		return err
@@ -69,7 +61,7 @@ func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error
 
 	var result []byte
 	for short, original := range b {
-		data, err := json.Marshal(StoredURL{short, original})
+		data, err := json.Marshal(StoredURL{short, original, 0})
 		if err != nil {
 			return err
 		}
@@ -86,4 +78,9 @@ func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error
 
 func (r FileRepository) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
+	var urls []StoredURL
+	return urls, nil
 }

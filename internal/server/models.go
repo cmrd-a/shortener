@@ -22,3 +22,11 @@ type ShortenBatchResponseItem struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
+
+//easyjson:json
+type GetUserURLsResponse []GetUserURLsResponseItem
+
+type GetUserURLsResponseItem struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}

@@ -15,8 +15,7 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 type Generator interface {
 	Generate() string
 }
-type ShortGenerator struct {
-}
+type ShortGenerator struct{}
 
 func NewShortGenerator() *ShortGenerator {
 	return &ShortGenerator{}
@@ -39,18 +38,21 @@ type URLService struct {
 func NewURLService(generator Generator, baseURL string, repo storage.Repository) *URLService {
 	return &URLService{generator, baseURL, repo}
 }
+func (s *URLService) IDtoURL(shortID string) string {
+	return fmt.Sprintf("%s/%s", s.baseURL, shortID)
+}
 
 func (s *URLService) Shorten(originalURL string) (string, error) {
-	short := s.generator.Generate()
-	err := s.repository.Add(short, originalURL)
+	shortID := s.generator.Generate()
+	err := s.repository.Add(shortID, originalURL)
 	var myErr *storage.OriginalExistError
 	if errors.As(err, &myErr) {
-		return "", NewOriginalExistError(fmt.Sprintf("%s/%s", s.baseURL, myErr.Short))
+		return "", NewOriginalExistError(s.IDtoURL(myErr.Short))
 	}
 	if err != nil {
 		return "", err
 	}
-	shortURL := fmt.Sprintf("%s/%s", s.baseURL, short)
+	shortURL := s.IDtoURL(shortID)
 	return shortURL, nil
 }
 
@@ -71,6 +73,7 @@ func (s *URLService) ShortenBatch(ctx context.Context, corOriginals map[string]s
 	result := make(map[string]string, len(corOriginals))
 	for corrID := range corOriginals {
 		result[corrID] = fmt.Sprintf("%s/%s", s.baseURL, shorts[corrID])
+		result[corrID] = s.IDtoURL(shorts[corrID])
 	}
 	return result, nil
 }
@@ -82,4 +85,13 @@ func (s *URLService) GetOriginal(id string) (string, error) {
 
 func (s *URLService) Ping(ctx context.Context) error {
 	return s.repository.Ping(ctx)
+}
+
+func (s *URLService) GetUserURLs(ctx context.Context, id int64) ([]storage.StoredURL, error) {
+	// storedURLs, err := s.repository.GetUserURLs(ctx, id)
+	// if err != nil {
+	// 	return make([]storage.StoredURL)), err
+	// }
+	// return fmt.Sprintf("%s/%s", s.baseURL, shortURL), nil
+	return nil, nil
 }

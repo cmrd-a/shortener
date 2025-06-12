@@ -108,3 +108,25 @@ func (r PgRepository) AddBatch(ctx context.Context, b map[string]string) error {
 	}
 	return nil
 }
+
+func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
+	// rows, err := r.pool.Query(ctx, `
+	// 	SELECT short, original
+	// 	FROM url
+	// 	WHERE user_id = $1
+	// `, userID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// defer rows.Close()
+
+	var urls []StoredURL
+	// for rows.Next() {
+	// 	var url StoredURL
+	// 	if err := rows.Scan(&url.Short, &url.Original); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	urls = append(urls, url)
+	// }
+	return urls, nil
+}

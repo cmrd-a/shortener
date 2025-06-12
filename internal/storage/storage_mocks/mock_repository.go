@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	storage "github.com/cmrd-a/shortener/internal/storage"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -75,6 +76,21 @@ func (m *MockRepository) Get(arg0 string) (string, error) {
 func (mr *MockRepositoryMockRecorder) Get(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), arg0)
+}
+
+// GetUserURLs mocks base method.
+func (m *MockRepository) GetUserURLs(arg0 context.Context, arg1 int64) ([]storage.StoredURL, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserURLs", arg0, arg1)
+	ret0, _ := ret[0].([]storage.StoredURL)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserURLs indicates an expected call of GetUserURLs.
+func (mr *MockRepositoryMockRecorder) GetUserURLs(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserURLs", reflect.TypeOf((*MockRepository)(nil).GetUserURLs), arg0, arg1)
 }
 
 // Ping mocks base method.
