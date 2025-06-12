@@ -38,6 +38,7 @@ type URLService struct {
 func NewURLService(generator Generator, baseURL string, repo storage.Repository) *URLService {
 	return &URLService{generator, baseURL, repo}
 }
+
 func (s *URLService) IDtoURL(shortID string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, shortID)
 }
@@ -72,7 +73,6 @@ func (s *URLService) ShortenBatch(ctx context.Context, corOriginals map[string]s
 
 	result := make(map[string]string, len(corOriginals))
 	for corrID := range corOriginals {
-		result[corrID] = fmt.Sprintf("%s/%s", s.baseURL, shorts[corrID])
 		result[corrID] = s.IDtoURL(shorts[corrID])
 	}
 	return result, nil

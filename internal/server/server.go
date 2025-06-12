@@ -12,7 +12,13 @@ type Server struct {
 
 func NewServer(log *zap.Logger, service Servicer) *Server {
 	s := &Server{chi.NewRouter()}
-	s.Router.Use(middleware.RequestResponseLogger(log), middleware.CheckContentType, middleware.DecompressRequest, middleware.CompressResponse)
+	s.Router.Use(
+		middleware.RequestResponseLogger(log),
+		middleware.CheckContentType,
+		middleware.DecompressRequest,
+		middleware.CompressResponse,
+		middleware.UpsertAuthCookie(log),
+	)
 
 	s.Router.Post("/", AddLinkHandler(service))
 	s.Router.Get("/{linkId}", GetLinkHandler(service))

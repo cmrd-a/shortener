@@ -5,7 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
+
+	"github.com/cmrd-a/shortener/internal/server/middleware"
 
 	"github.com/cmrd-a/shortener/internal/service"
 	"github.com/cmrd-a/shortener/internal/storage"
@@ -189,14 +190,13 @@ func PingHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 
 func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// TODO: Get user ID from context or authentication
-		userID, _ := strconv.Atoi(req.Header.Get("User-ID"))
+		userID := middleware.GetUserID(req.Context())
 		if userID == 0 {
-			http.Error(res, "user not authenticated", http.StatusUnauthorized)
+			res.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		urls, err := svc.GetUserURLs(req.Context(), int64(userID))
+		urls, err := svc.GetUserURLs(req.Context(), userID)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -210,15 +210,23 @@ func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusOK)
 
-		// resBytes, err := easyjson.Marshal(urls)
-		// if err != nil {
-		// 	http.Error(res, err.Error(), http.StatusInternalServerError)
-		// 	return
-		// }
-		// _, err = res.Write(resBytes)
-		// if err != nil {
-		// 	http.Error(res, err.Error(), http.StatusInternalServerError)
-		// 	return
-		// }
+		resJSON := make(GetUserURLsResponse, 0)
+		for _, u := range urls {
+			item := GetUserURLsResponseItem{ShortURL: u.ShortID, OriginalURL: u.OriginalURL}
+			resJSON = append(resJSON, item)
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+
+		resBytes, err := resJSON.MarshalJSON()
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = res.Write(resBytes)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
