@@ -72,6 +72,7 @@ func CompressResponse(next http.Handler) http.Handler {
 			cw := newCompressWriter(res)
 			ow = cw
 			defer cw.Close()
+			ow.Header().Add("Content-Encoding", "gzip")
 		}
 		next.ServeHTTP(ow, req)
 	})

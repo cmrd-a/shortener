@@ -1,0 +1,17 @@
+services:
+
+  db:
+    container_name: shortener_pg
+    image: postgres:17-alpine
+    restart: unless-stopped
+    shm_size: 128mb
+    ports:
+      - "5432:5432"
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_connections=true", "-c", "log_disconnections=true"]
+    env_file:
+      - .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:

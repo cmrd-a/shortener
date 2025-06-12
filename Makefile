@@ -4,8 +4,9 @@ build:
 test:
 	go test ./... -v
 
-gen:
+generate:
 	go generate ./...
+	make format
 
 format:
 	goimports -l -w .
@@ -21,7 +22,7 @@ check: build tidy format lint test
 
 cover:
 	go test ./... -coverpkg='./internal/...', -coverprofile coverage.out.tmp
-	cat coverage.out.tmp | grep -v "_easyjson.go" > coverage.out
+	cat coverage.out.tmp | grep -v "_easyjson.go\|mocks" > coverage.out
 	rm coverage.out.tmp
 
 cover-html: cover
@@ -29,3 +30,7 @@ cover-html: cover
 
 cover-cli: cover
 	go tool cover -func=coverage.out
+
+mock:
+	mockgen -destination=internal/storage/storage_mocks/mock_repository.go -package=storage_mocks github.com/cmrd-a/shortener/internal/storage Repository
+	mockgen -destination=internal/service/service_mocks/mock_generator.go -package=service_mocks github.com/cmrd-a/shortener/internal/service Generator
