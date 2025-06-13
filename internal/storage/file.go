@@ -25,25 +25,24 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	for str := range strings.SplitSeq(string(data), "\n") {
 		s := StoredURL{}
 		s.UnmarshalJSON([]byte(str))
-		r.cache.Add(s.ShortID, s.OriginalURL)
+		r.cache.Add(s.ShortID, s.OriginalURL, s.UserID)
 	}
 	return r, nil
 }
 
 func (r FileRepository) Get(short string) (string, error) {
-	url, err := r.cache.Get(short)
-	return url, err
+	return r.cache.Get(short)
 }
 
-func (r FileRepository) Add(short, original string) error {
-	err := r.cache.Add(short, original)
+func (r FileRepository) Add(short, original string, userID int64) error {
+	err := r.cache.Add(short, original, userID)
 	if err != nil {
 		return err
 	}
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
-	s := StoredURL{short, original, 0}
+	s := StoredURL{short, original, userID}
 	data, err := json.Marshal(&s)
 	if err != nil {
 		return err
@@ -81,6 +80,5 @@ func (r FileRepository) Ping(ctx context.Context) error {
 }
 
 func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
-	var urls []StoredURL
-	return urls, nil
+	return r.cache.GetUserURLs(ctx, userID)
 }

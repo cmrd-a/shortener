@@ -30,6 +30,7 @@ func (r PgRepository) Bootstrap() error {
 		CREATE TABLE IF NOT EXISTS url
 		(
 			id       BIGSERIAL PRIMARY KEY,
+			user_id  BIGINT NOT NULL DEFAULT 0,
 			short    text NOT NULL,
 			original text NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -52,6 +53,13 @@ func (r PgRepository) Bootstrap() error {
 	if err != nil {
 		return err
 	}
+	_, err = r.pool.Exec(context.Background(), `
+		CREATE INDEX IF NOT EXISTS user_id_index
+		ON url (user_id)
+	`)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -68,19 +76,19 @@ func (r PgRepository) Get(short string) (string, error) {
 	return original, nil
 }
 
-func (r PgRepository) Add(short, original string) error {
+func (r PgRepository) Add(short, original string, userID int64) error {
 	row := r.pool.QueryRow(context.Background(), `
 		WITH ins AS (
 			INSERT INTO url
-				(short, original)
-				VALUES ($1, $2)
+				(user_id, short, original)
+				VALUES ($1, $2, $3)
 				ON CONFLICT DO NOTHING),
 			 dup AS (SELECT short
 					 FROM url
-					 WHERE original = $2)
+					 WHERE original = $3)
 		SELECT short
 		FROM dup
-	`, short, original)
+	`, userID, short, original)
 	var existingShort string
 	err := row.Scan(&existingShort)
 	if err != nil {
@@ -100,7 +108,7 @@ func (r PgRepository) AddBatch(ctx context.Context, b map[string]string) error {
 	results := r.pool.SendBatch(ctx, batch)
 	defer results.Close()
 
-	for i := 0; i < len(b); i++ {
+	for i := range len(b) {
 		_, err := results.Exec()
 		if err != nil {
 			return fmt.Errorf("error executing batch command %d: %w", i, err)
@@ -110,23 +118,23 @@ func (r PgRepository) AddBatch(ctx context.Context, b map[string]string) error {
 }
 
 func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
-	// rows, err := r.pool.Query(ctx, `
-	// 	SELECT short, original
-	// 	FROM url
-	// 	WHERE user_id = $1
-	// `, userID)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// defer rows.Close()
+	rows, err := r.pool.Query(ctx, `
+		SELECT short, original
+		FROM url
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-	var urls []StoredURL
-	// for rows.Next() {
-	// 	var url StoredURL
-	// 	if err := rows.Scan(&url.Short, &url.Original); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	urls = append(urls, url)
-	// }
+	var urls = make([]StoredURL, 0)
+	for rows.Next() {
+		url := StoredURL{}
+		if err := rows.Scan(&url.ShortID, &url.OriginalURL); err != nil {
+			return nil, err
+		}
+		urls = append(urls, url)
+	}
 	return urls, nil
 }

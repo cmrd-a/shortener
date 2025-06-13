@@ -8,7 +8,7 @@ import (
 
 type Repository interface {
 	Get(string) (string, error)
-	Add(string, string) error
+	Add(string, string, int64) error
 	AddBatch(context.Context, map[string]string) error
 	Ping(context.Context) error
 	GetUserURLs(context.Context, int64) ([]StoredURL, error)

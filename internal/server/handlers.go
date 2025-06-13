@@ -9,18 +9,17 @@ import (
 	"github.com/cmrd-a/shortener/internal/server/middleware"
 
 	"github.com/cmrd-a/shortener/internal/service"
-	"github.com/cmrd-a/shortener/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mailru/easyjson"
 )
 
 type Servicer interface {
-	Shorten(string) (string, error)
+	Shorten(string, int64) (string, error)
 	ShortenBatch(context.Context, map[string]string) (map[string]string, error)
 	GetOriginal(string) (string, error)
 	Ping(context.Context) error
-	GetUserURLs(context.Context, int64) ([]storage.StoredURL, error)
+	GetUserURLs(context.Context, int64) ([]service.SvcURL, error)
 }
 
 func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
@@ -35,7 +34,8 @@ func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-		shortLink, err := svc.Shorten(originalLink)
+		userID := middleware.GetUserID(req.Context())
+		shortLink, err := svc.Shorten(originalLink, userID)
 		var alreadyExistError *service.OriginalExistError
 		if errors.As(err, &alreadyExistError) {
 			res.WriteHeader(http.StatusConflict)
@@ -84,8 +84,8 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-
-		shortLink, err := svc.Shorten(reqJSON.URL)
+		userID := middleware.GetUserID(req.Context())
+		shortLink, err := svc.Shorten(reqJSON.URL, userID)
 		var alreadyExistError *service.OriginalExistError
 		if errors.As(err, &alreadyExistError) {
 			body, err := ShortenResponse{Result: alreadyExistError.Short}.MarshalJSON()
@@ -212,7 +212,7 @@ func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 
 		resJSON := make(GetUserURLsResponse, 0)
 		for _, u := range urls {
-			item := GetUserURLsResponseItem{ShortURL: u.ShortID, OriginalURL: u.OriginalURL}
+			item := GetUserURLsResponseItem{ShortURL: u.ShortURL, OriginalURL: u.OriginalURL}
 			resJSON = append(resJSON, item)
 		}
 

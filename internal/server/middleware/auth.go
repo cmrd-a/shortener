@@ -3,13 +3,13 @@ package middleware
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 )
 
 type Claims struct {
@@ -17,12 +17,15 @@ type Claims struct {
 	UserID int64
 }
 
-func BuildJWTString() (string, error) {
+func BuildJWTString(userID int64) (string, error) {
+	if userID == 0 {
+		userID = int64(rand.Intn(1000))
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 10)), //TODO: равен константе
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 3)),
 		},
-		UserID: 1, //TODO:rand
+		UserID: userID,
 	})
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -35,17 +38,14 @@ func BuildJWTString() (string, error) {
 
 func ParseToken(tokenString string) (int64, error) {
 	claims := &Claims{}
-	_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
-	if err != nil {
-		return 0, err
-	}
-	return claims.UserID, nil
+	return claims.UserID, err
 }
 
-func CreateCookie() (*http.Cookie, error) {
-	token, err := BuildJWTString()
+func CreateCookie(userID int64) (*http.Cookie, error) {
+	token, err := BuildJWTString(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func CreateCookie() (*http.Cookie, error) {
 		Name:     "auth_token",
 		Value:    token,
 		Path:     "/",
-		MaxAge:   20, //TODO: равен константе
+		MaxAge:   3600,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
@@ -68,7 +68,11 @@ const (
 )
 
 func GetUserID(ctx context.Context) int64 {
-	return ctx.Value(userIDKey).(int64)
+	v, ok := ctx.Value(userIDKey).(int64)
+	if !ok {
+		return 0
+	}
+	return v
 }
 
 func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
@@ -78,7 +82,7 @@ func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
 					log.Debug("no cookie")
-					newCookie, err := CreateCookie()
+					newCookie, err := CreateCookie(0)
 					if err != nil {
 						log.Error(err.Error())
 					}
@@ -92,15 +96,14 @@ func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
 				if err != nil {
 					log.Error(err.Error())
 					log.Debug("invalid token")
-					newCookie, err := CreateCookie()
+					newCookie, err := CreateCookie(userID)
 					if err != nil {
 						log.Error(err.Error())
 					}
 					http.SetCookie(res, newCookie)
 					log.Debug("new cookie is set")
-				} else if userID == 0 {
-					log.Debug("zero user")
-				} else {
+				}
+				if userID != 0 {
 					ctx := context.WithValue(req.Context(), userIDKey, userID)
 					req = req.WithContext(ctx)
 				}

@@ -13,16 +13,16 @@ func NewInMemoryRepository() *InMemoryRepository {
 	return &InMemoryRepository{store: make(map[string]StoredURL)}
 }
 
-func (a InMemoryRepository) Get(short string) (string, error) {
-	storedURL, ok := a.store[short]
+func (r InMemoryRepository) Get(short string) (string, error) {
+	storedURL, ok := r.store[short]
 	if !ok {
 		return "", errors.New("url not found")
 	}
 	return storedURL.OriginalURL, nil
 }
 
-func (a InMemoryRepository) CheckOriginalExist(original string) (string, bool) {
-	for key, value := range a.store {
+func (r InMemoryRepository) checkOriginalExist(original string) (string, bool) {
+	for key, value := range r.store {
 		if value.OriginalURL == original {
 			return key, true
 		}
@@ -30,28 +30,28 @@ func (a InMemoryRepository) CheckOriginalExist(original string) (string, bool) {
 	return "", false
 }
 
-func (a InMemoryRepository) Add(short, original string) error {
-	if oldShort, ok := a.CheckOriginalExist(original); ok {
+func (r InMemoryRepository) Add(short, original string, userID int64) error {
+	if oldShort, ok := r.checkOriginalExist(original); ok {
 		return NewOriginalExistError(oldShort)
 	}
-	a.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: 0}
+	r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
 	return nil
 }
 
-func (a InMemoryRepository) AddBatch(ctx context.Context, b map[string]string) error {
+func (r InMemoryRepository) AddBatch(ctx context.Context, b map[string]string) error {
 	for short, original := range b {
-		a.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: 0}
+		r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: 0}
 	}
 	return nil
 }
 
-func (a InMemoryRepository) Ping(ctx context.Context) error {
+func (r InMemoryRepository) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (a InMemoryRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
+func (r InMemoryRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
 	var urls []StoredURL
-	for _, value := range a.store {
+	for _, value := range r.store {
 		if value.UserID == userID {
 			urls = append(urls, value)
 		}

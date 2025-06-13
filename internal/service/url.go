@@ -39,21 +39,21 @@ func NewURLService(generator Generator, baseURL string, repo storage.Repository)
 	return &URLService{generator, baseURL, repo}
 }
 
-func (s *URLService) IDtoURL(shortID string) string {
+func (s *URLService) addBaseURL(shortID string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, shortID)
 }
 
-func (s *URLService) Shorten(originalURL string) (string, error) {
+func (s *URLService) Shorten(originalURL string, userID int64) (string, error) {
 	shortID := s.generator.Generate()
-	err := s.repository.Add(shortID, originalURL)
+	err := s.repository.Add(shortID, originalURL, userID)
 	var myErr *storage.OriginalExistError
 	if errors.As(err, &myErr) {
-		return "", NewOriginalExistError(s.IDtoURL(myErr.Short))
+		return "", NewOriginalExistError(s.addBaseURL(myErr.Short))
 	}
 	if err != nil {
 		return "", err
 	}
-	shortURL := s.IDtoURL(shortID)
+	shortURL := s.addBaseURL(shortID)
 	return shortURL, nil
 }
 
@@ -73,7 +73,7 @@ func (s *URLService) ShortenBatch(ctx context.Context, corOriginals map[string]s
 
 	result := make(map[string]string, len(corOriginals))
 	for corrID := range corOriginals {
-		result[corrID] = s.IDtoURL(shorts[corrID])
+		result[corrID] = s.addBaseURL(shorts[corrID])
 	}
 	return result, nil
 }
@@ -87,11 +87,17 @@ func (s *URLService) Ping(ctx context.Context) error {
 	return s.repository.Ping(ctx)
 }
 
-func (s *URLService) GetUserURLs(ctx context.Context, id int64) ([]storage.StoredURL, error) {
-	// storedURLs, err := s.repository.GetUserURLs(ctx, id)
-	// if err != nil {
-	// 	return make([]storage.StoredURL)), err
-	// }
-	// return fmt.Sprintf("%s/%s", s.baseURL, shortURL), nil
-	return nil, nil
+func (s *URLService) GetUserURLs(ctx context.Context, id int64) ([]SvcURL, error) {
+	storedURLs, err := s.repository.GetUserURLs(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(storedURLs) == 0 {
+		return nil, nil
+	}
+	svcURLs := make([]SvcURL, len(storedURLs))
+	for i, stored := range storedURLs {
+		svcURLs[i] = SvcURL{OriginalURL: stored.OriginalURL, UserID: stored.UserID, ShortURL: s.addBaseURL(stored.ShortID)}
+	}
+	return svcURLs, nil
 }
