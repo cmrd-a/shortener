@@ -18,9 +18,6 @@ type Claims struct {
 }
 
 func BuildJWTString(userID int64) (string, error) {
-	if userID == 0 {
-		userID = int64(rand.Intn(1000))
-	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 3)),
@@ -50,7 +47,7 @@ func CreateCookie(userID int64) (*http.Cookie, error) {
 		return nil, err
 	}
 	cookie := http.Cookie{
-		Name:     "auth_token",
+		Name:     "Authorization",
 		Value:    token,
 		Path:     "/",
 		MaxAge:   3600,
@@ -78,15 +75,18 @@ func GetUserID(ctx context.Context) int64 {
 func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			existedCookie, err := req.Cookie("auth_token")
+			existedCookie, err := req.Cookie("Authorization")
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
 					log.Debug("no cookie")
-					newCookie, err := CreateCookie(0)
+					userID := int64(rand.Intn(1000))
+					newCookie, err := CreateCookie(userID)
 					if err != nil {
 						log.Error(err.Error())
 					}
 					http.SetCookie(res, newCookie)
+					ctx := context.WithValue(req.Context(), userIDKey, userID)
+					req = req.WithContext(ctx)
 					log.Debug("new cookie is set")
 				} else {
 					log.Error(err.Error())
