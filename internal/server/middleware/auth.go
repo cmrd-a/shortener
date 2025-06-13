@@ -51,9 +51,9 @@ func CreateCookie(userID int64) (*http.Cookie, error) {
 		Value:    token,
 		Path:     "/",
 		MaxAge:   3600,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 	}
 	return &cookie, nil
 }
