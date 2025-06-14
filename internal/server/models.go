@@ -30,3 +30,6 @@ type GetUserURLsResponseItem struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+//easyjson:json
+type DeleteUserURLsRequest []string

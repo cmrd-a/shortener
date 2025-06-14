@@ -57,7 +57,7 @@ func (s *URLService) Shorten(originalURL string, userID int64) (string, error) {
 	return shortURL, nil
 }
 
-func (s *URLService) ShortenBatch(ctx context.Context, corOriginals map[string]string) (map[string]string, error) {
+func (s *URLService) ShortenBatch(ctx context.Context, userID int64, corOriginals map[string]string) (map[string]string, error) {
 	shorts := make(map[string]string, len(corOriginals))
 	shortsOriginals := make(map[string]string, len(corOriginals))
 	for corrID, original := range corOriginals {
@@ -66,7 +66,7 @@ func (s *URLService) ShortenBatch(ctx context.Context, corOriginals map[string]s
 		shortsOriginals[short] = original
 	}
 
-	err := s.repository.AddBatch(ctx, shortsOriginals)
+	err := s.repository.AddBatch(ctx, userID, shortsOriginals)
 	if err != nil {
 		return nil, err
 	}
@@ -101,3 +101,34 @@ func (s *URLService) GetUserURLs(ctx context.Context, id int64) ([]SvcURL, error
 	}
 	return svcURLs, nil
 }
+
+func (s *URLService) DeleteUserURLs(ctx context.Context, id int64, shortIDs ...string) {}
+
+//func (a *app) flushMessages() {
+//	// будем сохранять сообщения, накопленные за последние 10 секунд
+//	ticker := time.NewTicker(10 * time.Second)
+//
+//	var messages []store.Message
+//
+//	for {
+//		select {
+//		case msg := <-a.msgChan:
+//			// добавим сообщение в слайс для последующего сохранения
+//			messages = append(messages, msg)
+//		case <-ticker.C:
+//			// подождём, пока придёт хотя бы одно сообщение
+//			if len(messages) == 0 {
+//				continue
+//			}
+//			// сохраним все пришедшие сообщения одновременно
+//			err := a.store.SaveMessages(context.TODO(), messages...)
+//			if err != nil {
+//				logger.Log.Debug("cannot save messages", zap.Error(err))
+//				// не будем стирать сообщения, попробуем отправить их чуть позже
+//				continue
+//			}
+//			// сотрём успешно отосланные сообщения
+//			messages = nil
+//		}
+//	}
+//}

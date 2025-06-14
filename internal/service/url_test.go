@@ -44,10 +44,10 @@ func TestShortenBatch(t *testing.T) {
 	shortOriginals := make(map[string]string)
 	shortOriginals["short1"] = "https://regex101.com/"
 	shortOriginals["short2"] = "https://www.jaegertracing.io/"
-
-	mr.EXPECT().AddBatch(ctx, shortOriginals).Return(nil)
+	var userID int64 = 1
+	mr.EXPECT().AddBatch(ctx, userID, shortOriginals).Return(nil)
 	svc := NewURLService(mg, "localhost", mr)
-	shorts, err := svc.ShortenBatch(ctx, corOriginals)
+	shorts, err := svc.ShortenBatch(ctx, userID, corOriginals)
 
 	require.NoError(t, err)
 	expected := make(map[string]string)

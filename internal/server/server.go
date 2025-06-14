@@ -27,6 +27,7 @@ func NewServer(log *zap.Logger, service Servicer) *Server {
 	s.Router.Post("/api/shorten", ShortenHandler(service))
 	s.Router.Post("/api/shorten/batch", ShortenBatchHandler(service))
 	s.Router.Get("/api/user/urls", GetUserURLsHandler(service))
+	s.Router.Delete("/api/user/urls", DeleteUserURLsHandler(service))
 
 	return s
 }

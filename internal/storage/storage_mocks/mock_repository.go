@@ -50,17 +50,17 @@ func (mr *MockRepositoryMockRecorder) Add(arg0, arg1, arg2 interface{}) *gomock.
 }
 
 // AddBatch mocks base method.
-func (m *MockRepository) AddBatch(arg0 context.Context, arg1 map[string]string) error {
+func (m *MockRepository) AddBatch(arg0 context.Context, arg1 int64, arg2 map[string]string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddBatch", arg0, arg1)
+	ret := m.ctrl.Call(m, "AddBatch", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddBatch indicates an expected call of AddBatch.
-func (mr *MockRepositoryMockRecorder) AddBatch(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) AddBatch(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddBatch", reflect.TypeOf((*MockRepository)(nil).AddBatch), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddBatch", reflect.TypeOf((*MockRepository)(nil).AddBatch), arg0, arg1, arg2)
 }
 
 // Get mocks base method.
@@ -91,6 +91,23 @@ func (m *MockRepository) GetUserURLs(arg0 context.Context, arg1 int64) ([]storag
 func (mr *MockRepositoryMockRecorder) GetUserURLs(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserURLs", reflect.TypeOf((*MockRepository)(nil).GetUserURLs), arg0, arg1)
+}
+
+// MarkDeletedUserURLs mocks base method.
+func (m *MockRepository) MarkDeletedUserURLs(arg0 context.Context, arg1 int64, arg2 ...string) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "MarkDeletedUserURLs", varargs...)
+}
+
+// MarkDeletedUserURLs indicates an expected call of MarkDeletedUserURLs.
+func (mr *MockRepositoryMockRecorder) MarkDeletedUserURLs(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkDeletedUserURLs", reflect.TypeOf((*MockRepository)(nil).MarkDeletedUserURLs), varargs...)
 }
 
 // Ping mocks base method.

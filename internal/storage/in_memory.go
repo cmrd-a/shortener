@@ -38,9 +38,9 @@ func (r InMemoryRepository) Add(short, original string, userID int64) error {
 	return nil
 }
 
-func (r InMemoryRepository) AddBatch(ctx context.Context, b map[string]string) error {
+func (r InMemoryRepository) AddBatch(ctx context.Context, userID int64, b map[string]string) error {
 	for short, original := range b {
-		r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: 0}
+		r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
 	}
 	return nil
 }
@@ -57,4 +57,14 @@ func (r InMemoryRepository) GetUserURLs(ctx context.Context, userID int64) ([]St
 		}
 	}
 	return urls, nil
+}
+
+func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, userID int64, shortIDs ...string) {
+	for _, shortID := range shortIDs {
+		if r.store[shortID].UserID == userID {
+			v := r.store[shortID]
+			v.IsDeleted = true
+			r.store[shortID] = v
+		}
+	}
 }

@@ -24,8 +24,14 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	}
 	for str := range strings.SplitSeq(string(data), "\n") {
 		s := StoredURL{}
-		s.UnmarshalJSON([]byte(str))
-		r.cache.Add(s.ShortID, s.OriginalURL, s.UserID)
+		err := s.UnmarshalJSON([]byte(str))
+		if err != nil {
+			return nil, err
+		}
+		err = r.cache.Add(s.ShortID, s.OriginalURL, s.UserID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return r, nil
 }
@@ -42,7 +48,7 @@ func (r FileRepository) Add(short, original string, userID int64) error {
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
-	s := StoredURL{short, original, userID}
+	s := StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
 	data, err := json.Marshal(&s)
 	if err != nil {
 		return err
@@ -53,14 +59,17 @@ func (r FileRepository) Add(short, original string, userID int64) error {
 
 }
 
-func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error {
-	r.cache.AddBatch(ctx, b)
+func (r FileRepository) AddBatch(ctx context.Context, userID int64, b map[string]string) error {
+	err := r.cache.AddBatch(ctx, userID, b)
+	if err != nil {
+		return err
+	}
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
 	var result []byte
 	for short, original := range b {
-		data, err := json.Marshal(StoredURL{short, original, 0})
+		data, err := json.Marshal(StoredURL{ShortID: short, OriginalURL: original, UserID: userID})
 		if err != nil {
 			return err
 		}
@@ -68,7 +77,7 @@ func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error
 		result = append(result, data...)
 	}
 
-	_, err := file.Write(result)
+	_, err = file.Write(result)
 	if err != nil {
 		return err
 	}
@@ -81,4 +90,9 @@ func (r FileRepository) Ping(ctx context.Context) error {
 
 func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
 	return r.cache.GetUserURLs(ctx, userID)
+}
+
+func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, userID int64, shortIDs ...string) {
+	r.cache.MarkDeletedUserURLs(ctx, userID, shortIDs...)
+	//TODO
 }

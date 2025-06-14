@@ -33,6 +33,7 @@ func (r PgRepository) Bootstrap() error {
 			user_id  BIGINT NOT NULL DEFAULT 0,
 			short    text NOT NULL,
 			original text NOT NULL,
+			is_deleted bool NOT NULL DEFAULT false,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		)
 	`)
@@ -100,10 +101,10 @@ func (r PgRepository) Add(short, original string, userID int64) error {
 	return NewOriginalExistError(existingShort)
 }
 
-func (r PgRepository) AddBatch(ctx context.Context, b map[string]string) error {
+func (r PgRepository) AddBatch(ctx context.Context, userID int64, b map[string]string) error {
 	batch := &pgx.Batch{}
 	for short, original := range b {
-		batch.Queue("INSERT INTO url (short, original) VALUES ($1, $2)", short, original)
+		batch.Queue("INSERT INTO url (short, original, user_id) VALUES ($1, $2, $3)", short, original, userID)
 	}
 	results := r.pool.SendBatch(ctx, batch)
 	defer results.Close()
@@ -138,3 +139,43 @@ func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredUR
 	}
 	return urls, nil
 }
+
+func (r PgRepository) MarkDeletedUserURLs(ctx context.Context, userID int64, shortIDs ...string) {
+	batch := &pgx.Batch{}
+	for _, shortID := range shortIDs {
+		batch.Queue("UPDATE url SET is_deleted=true WHERE short=$1 AND user_id=$2", shortID, userID)
+	}
+	results := r.pool.SendBatch(ctx, batch)
+	defer results.Close()
+	for i := range len(shortIDs) {
+		_, err := results.Exec()
+		if err != nil {
+			fmt.Printf("error executing batch command %d: %v", i, err)
+		}
+	}
+}
+
+//func (r PgRepository) SaveMessages(ctx context.Context, messages ...StoredURL) error {
+//	// соберём данные для создания запроса с групповой вставкой
+//	var values []string
+//	var args []any
+//	for i, msg := range messages {
+//		// в нашем запросе по 4 параметра на каждое сообщение
+//		base := i * 4
+//		// PostgreSQL требует шаблоны в формате ($1, $2, $3, $4) для каждой вставки
+//		params := fmt.Sprintf("($%d, $%d, $%d, $%d)", base+1, base+2, base+3, base+4)
+//		values = append(values, params)
+//		args = append(args, msg.Sender, msg.Recepient, msg.Payload, msg.Time)
+//	}
+//
+//	// составляем строку запроса
+//	query := `
+//  INSERT INTO url
+//  (sender, recepient, payload, sent_at)
+//  VALUES ` + strings.Join(values, ",") + `;`
+//
+//	// добавляем новые сообщения в БД
+//	_, err := s.conn.ExecContext(ctx, query, args...)
+//
+//	return err
+//}

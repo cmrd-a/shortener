@@ -43,6 +43,8 @@ func easyjsonD2b7633eDecodeGithubComCmrdAShortenerInternalStorage(in *jlexer.Lex
 			out.OriginalURL = string(in.String())
 		case "user_id":
 			out.UserID = int64(in.Int64())
+		case "is_deleted":
+			out.IsDeleted = bool(in.Bool())
 		default:
 			in.SkipRecursive()
 		}
@@ -71,6 +73,11 @@ func easyjsonD2b7633eEncodeGithubComCmrdAShortenerInternalStorage(out *jwriter.W
 		const prefix string = ",\"user_id\":"
 		out.RawString(prefix)
 		out.Int64(int64(in.UserID))
+	}
+	{
+		const prefix string = ",\"is_deleted\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.IsDeleted))
 	}
 	out.RawByte('}')
 }
