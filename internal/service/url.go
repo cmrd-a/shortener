@@ -68,14 +68,14 @@ func (s *URLService) Shorten(ctx context.Context, originalURL string, userID int
 
 func (s *URLService) ShortenBatch(ctx context.Context, userID int64, corOriginals map[string]string) (map[string]string, error) {
 	shorts := make(map[string]string, len(corOriginals))
-	shortsOriginals := make(map[string]string, len(corOriginals))
+	shortsOriginals := make([]storage.StoredURL, 0)
 	for corrID, original := range corOriginals {
 		short := s.generator.Generate()
 		shorts[corrID] = short
-		shortsOriginals[short] = original
+		shortsOriginals = append(shortsOriginals, storage.StoredURL{ShortID: short, OriginalURL: original, UserID: userID})
 	}
 
-	err := s.repository.AddBatch(ctx, userID, shortsOriginals)
+	err := s.repository.AddBatch(ctx, userID, shortsOriginals...)
 	if err != nil {
 		return nil, err
 	}

@@ -41,9 +41,9 @@ func (r InMemoryRepository) Add(ctx context.Context, short, original string, use
 	return nil
 }
 
-func (r InMemoryRepository) AddBatch(ctx context.Context, userID int64, b map[string]string) error {
-	for short, original := range b {
-		r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
+func (r InMemoryRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
+	for _, url := range batch {
+		r.store[url.ShortID] = StoredURL{ShortID: url.ShortID, OriginalURL: url.OriginalURL, UserID: userID}
 	}
 	return nil
 }

@@ -105,15 +105,15 @@ func (r PgRepository) Add(ctx context.Context, short, original string, userID in
 	return NewOriginalExistError(existingShort)
 }
 
-func (r PgRepository) AddBatch(ctx context.Context, userID int64, b map[string]string) error {
-	batch := &pgx.Batch{}
-	for short, original := range b {
-		batch.Queue("INSERT INTO url (short, original, user_id) VALUES ($1, $2, $3)", short, original, userID)
+func (r PgRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
+	b := &pgx.Batch{}
+	for _, url := range batch {
+		b.Queue("INSERT INTO url (short, original, user_id) VALUES ($1, $2, $3)", url.ShortID, url.OriginalURL, userID)
 	}
-	results := r.pool.SendBatch(ctx, batch)
+	results := r.pool.SendBatch(ctx, b)
 	defer results.Close()
 
-	for i := range len(b) {
+	for i := range len(batch) {
 		_, err := results.Exec()
 		if err != nil {
 			return fmt.Errorf("error executing batch command %d: %w", i, err)

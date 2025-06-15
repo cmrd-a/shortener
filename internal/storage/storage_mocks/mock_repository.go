@@ -50,17 +50,22 @@ func (mr *MockRepositoryMockRecorder) Add(arg0, arg1, arg2, arg3 interface{}) *g
 }
 
 // AddBatch mocks base method.
-func (m *MockRepository) AddBatch(arg0 context.Context, arg1 int64, arg2 map[string]string) error {
+func (m *MockRepository) AddBatch(arg0 context.Context, arg1 int64, arg2 ...storage.StoredURL) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddBatch", arg0, arg1, arg2)
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AddBatch", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddBatch indicates an expected call of AddBatch.
-func (mr *MockRepositoryMockRecorder) AddBatch(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) AddBatch(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddBatch", reflect.TypeOf((*MockRepository)(nil).AddBatch), arg0, arg1, arg2)
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddBatch", reflect.TypeOf((*MockRepository)(nil).AddBatch), varargs...)
 }
 
 // Get mocks base method.

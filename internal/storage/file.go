@@ -41,14 +41,11 @@ func (r FileRepository) Get(ctx context.Context, short string) (string, error) {
 }
 
 func (r FileRepository) Add(ctx context.Context, short, original string, userID int64) error {
-	m := make(map[string]string)
-	m[short] = original
-	return r.AddBatch(ctx, userID, m)
-
+	return r.AddBatch(ctx, userID, StoredURL{ShortID: short, OriginalURL: original, UserID: userID})
 }
 
-func (r FileRepository) AddBatch(ctx context.Context, userID int64, b map[string]string) error {
-	err := r.cache.AddBatch(ctx, userID, b)
+func (r FileRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
+	err := r.cache.AddBatch(ctx, userID, batch...)
 	if err != nil {
 		return err
 	}
@@ -56,8 +53,8 @@ func (r FileRepository) AddBatch(ctx context.Context, userID int64, b map[string
 	defer file.Close()
 
 	var result []byte
-	for short, original := range b {
-		data, err := json.Marshal(StoredURL{ShortID: short, OriginalURL: original, UserID: userID})
+	for _, url := range batch {
+		data, err := json.Marshal(url)
 		if err != nil {
 			return err
 		}

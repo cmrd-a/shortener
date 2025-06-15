@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/cmrd-a/shortener/internal/service/service_mocks"
+	"github.com/cmrd-a/shortener/internal/storage"
 	"github.com/cmrd-a/shortener/internal/storage/storage_mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -34,25 +36,29 @@ func TestShortenBatch(t *testing.T) {
 
 	mr := storage_mocks.NewMockRepository(ctrl)
 	mg := service_mocks.NewMockGenerator(ctrl)
-	mg.EXPECT().Generate().Return("short1")
-	mg.EXPECT().Generate().Return("short2")
+	s1 := "short1"
+	s2 := "short2"
+	o1 := "https://regex101.com"
+	o2 := "https://www.jaegertracing.io"
+	mg.EXPECT().Generate().Return(s1)
+	mg.EXPECT().Generate().Return(s2)
 
-	corOriginals := make(map[string]string)
-	corOriginals["cor1"] = "https://regex101.com/"
-	corOriginals["cor2"] = "https://www.jaegertracing.io/"
+	corOriginals := make(map[string]string, 2)
+	corOriginals["cor1"] = o1
+	corOriginals["cor2"] = o2
 	ctx := context.TODO()
-
-	shortOriginals := make(map[string]string)
-	shortOriginals["short1"] = "https://regex101.com/"
-	shortOriginals["short2"] = "https://www.jaegertracing.io/"
 	var userID int64 = 1
-	mr.EXPECT().AddBatch(ctx, userID, shortOriginals).Return(nil)
+	storedURLs := make([]storage.StoredURL, 0)
+	storedURLs = append(storedURLs, storage.StoredURL{ShortID: s1, OriginalURL: o1, UserID: userID})
+	storedURLs = append(storedURLs, storage.StoredURL{ShortID: s2, OriginalURL: o2, UserID: userID})
+
+	mr.EXPECT().AddBatch(ctx, userID, storedURLs).Return(nil)
 	svc := NewURLService(mg, "localhost", mr)
 	shorts, err := svc.ShortenBatch(ctx, userID, corOriginals)
 
 	require.NoError(t, err)
 	expected := make(map[string]string)
-	expected["cor1"] = "localhost/short1"
-	expected["cor2"] = "localhost/short2"
+	expected["cor1"] = fmt.Sprintf("localhost/%s", s1)
+	expected["cor2"] = fmt.Sprintf("localhost/%s", s2)
 	require.Equal(t, shorts, expected)
 }
