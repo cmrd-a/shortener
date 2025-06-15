@@ -18,10 +18,11 @@ func TestGetOriginal(t *testing.T) {
 
 	value := "ya.ru"
 	short := "RaNdOm"
-	mr.EXPECT().Get(short).Return(value, nil)
+	ctx := context.TODO()
+	mr.EXPECT().Get(ctx, short).Return(value, nil)
 	generator := NewShortGenerator()
 	svc := NewURLService(generator, "localhost", mr)
-	original, err := svc.GetOriginal(short)
+	original, err := svc.GetOriginal(ctx, short)
 
 	require.NoError(t, err)
 	require.Equal(t, original, value)
@@ -39,7 +40,7 @@ func TestShortenBatch(t *testing.T) {
 	corOriginals := make(map[string]string)
 	corOriginals["cor1"] = "https://regex101.com/"
 	corOriginals["cor2"] = "https://www.jaegertracing.io/"
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	shortOriginals := make(map[string]string)
 	shortOriginals["short1"] = "https://regex101.com/"

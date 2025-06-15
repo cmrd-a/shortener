@@ -13,10 +13,13 @@ func NewInMemoryRepository() *InMemoryRepository {
 	return &InMemoryRepository{store: make(map[string]StoredURL)}
 }
 
-func (r InMemoryRepository) Get(short string) (string, error) {
+func (r InMemoryRepository) Get(ctx context.Context, short string) (string, error) {
 	storedURL, ok := r.store[short]
 	if !ok {
 		return "", errors.New("url not found")
+	}
+	if storedURL.IsDeleted {
+		return "", ErrURLIsDeleted
 	}
 	return storedURL.OriginalURL, nil
 }
@@ -30,7 +33,7 @@ func (r InMemoryRepository) checkOriginalExist(original string) (string, bool) {
 	return "", false
 }
 
-func (r InMemoryRepository) Add(short, original string, userID int64) error {
+func (r InMemoryRepository) Add(ctx context.Context, short, original string, userID int64) error {
 	if oldShort, ok := r.checkOriginalExist(original); ok {
 		return NewOriginalExistError(oldShort)
 	}
@@ -52,19 +55,19 @@ func (r InMemoryRepository) Ping(ctx context.Context) error {
 func (r InMemoryRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
 	var urls []StoredURL
 	for _, value := range r.store {
-		if value.UserID == userID {
+		if value.UserID == userID && !value.IsDeleted {
 			urls = append(urls, value)
 		}
 	}
 	return urls, nil
 }
 
-func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, userID int64, shortIDs ...string) {
-	for _, shortID := range shortIDs {
-		if r.store[shortID].UserID == userID {
-			v := r.store[shortID]
+func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
+	for _, url := range urls {
+		if r.store[url.ShortID].UserID == url.UserID {
+			v := r.store[url.ShortID]
 			v.IsDeleted = true
-			r.store[shortID] = v
+			r.store[url.ShortID] = v
 		}
 	}
 }

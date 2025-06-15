@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cmrd-a/shortener/internal/storage"
 
@@ -30,23 +31,31 @@ func (g *ShortGenerator) Generate() string {
 }
 
 type URLService struct {
-	generator  Generator
-	baseURL    string
-	repository storage.Repository
+	generator       Generator
+	baseURL         string
+	repository      storage.Repository
+	delUserURLsChan chan storage.URLForDelete
 }
 
 func NewURLService(generator Generator, baseURL string, repo storage.Repository) *URLService {
-	return &URLService{generator, baseURL, repo}
+	s := URLService{
+		generator:       generator,
+		baseURL:         baseURL,
+		repository:      repo,
+		delUserURLsChan: make(chan storage.URLForDelete, 1024),
+	}
+	go s.deleteUserURLsJob()
+	return &s
 }
 
 func (s *URLService) addBaseURL(shortID string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, shortID)
 }
 
-func (s *URLService) Shorten(originalURL string, userID int64) (string, error) {
+func (s *URLService) Shorten(ctx context.Context, originalURL string, userID int64) (string, error) {
 	shortID := s.generator.Generate()
-	err := s.repository.Add(shortID, originalURL, userID)
-	var myErr *storage.OriginalExistError
+	err := s.repository.Add(ctx, shortID, originalURL, userID)
+	var myErr *storage.ErrOriginalExist
 	if errors.As(err, &myErr) {
 		return "", NewOriginalExistError(s.addBaseURL(myErr.Short))
 	}
@@ -78,8 +87,8 @@ func (s *URLService) ShortenBatch(ctx context.Context, userID int64, corOriginal
 	return result, nil
 }
 
-func (s *URLService) GetOriginal(id string) (string, error) {
-	original, err := s.repository.Get(id)
+func (s *URLService) GetOriginal(ctx context.Context, id string) (string, error) {
+	original, err := s.repository.Get(ctx, id)
 	return original, err
 }
 
@@ -102,33 +111,26 @@ func (s *URLService) GetUserURLs(ctx context.Context, id int64) ([]SvcURL, error
 	return svcURLs, nil
 }
 
-func (s *URLService) DeleteUserURLs(ctx context.Context, id int64, shortIDs ...string) {}
+func (s *URLService) DeleteUserURLs(ctx context.Context, userID int64, shortIDs ...string) {
+	for _, shortID := range shortIDs {
+		s.delUserURLsChan <- storage.URLForDelete{UserID: userID, ShortID: shortID}
+	}
+}
 
-//func (a *app) flushMessages() {
-//	// будем сохранять сообщения, накопленные за последние 10 секунд
-//	ticker := time.NewTicker(10 * time.Second)
-//
-//	var messages []store.Message
-//
-//	for {
-//		select {
-//		case msg := <-a.msgChan:
-//			// добавим сообщение в слайс для последующего сохранения
-//			messages = append(messages, msg)
-//		case <-ticker.C:
-//			// подождём, пока придёт хотя бы одно сообщение
-//			if len(messages) == 0 {
-//				continue
-//			}
-//			// сохраним все пришедшие сообщения одновременно
-//			err := a.store.SaveMessages(context.TODO(), messages...)
-//			if err != nil {
-//				logger.Log.Debug("cannot save messages", zap.Error(err))
-//				// не будем стирать сообщения, попробуем отправить их чуть позже
-//				continue
-//			}
-//			// сотрём успешно отосланные сообщения
-//			messages = nil
-//		}
-//	}
-//}
+func (s *URLService) deleteUserURLsJob() {
+	ticker := time.NewTicker(5 * time.Second)
+
+	var deletions []storage.URLForDelete
+	for {
+		select {
+		case deletion := <-s.delUserURLsChan:
+			deletions = append(deletions, deletion)
+		case <-ticker.C:
+			if len(deletions) == 0 {
+				continue
+			}
+			s.repository.MarkDeletedUserURLs(context.Background(), deletions...)
+			deletions = nil
+		}
+	}
+}

@@ -28,7 +28,7 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 		if err != nil {
 			return nil, err
 		}
-		err = r.cache.Add(s.ShortID, s.OriginalURL, s.UserID)
+		err = r.cache.Add(context.TODO(), s.ShortID, s.OriginalURL, s.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -36,26 +36,14 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	return r, nil
 }
 
-func (r FileRepository) Get(short string) (string, error) {
-	return r.cache.Get(short)
+func (r FileRepository) Get(ctx context.Context, short string) (string, error) {
+	return r.cache.Get(ctx, short)
 }
 
-func (r FileRepository) Add(short, original string, userID int64) error {
-	err := r.cache.Add(short, original, userID)
-	if err != nil {
-		return err
-	}
-	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	defer file.Close()
-
-	s := StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
-	data, err := json.Marshal(&s)
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	_, err = file.Write(data)
-	return err
+func (r FileRepository) Add(ctx context.Context, short, original string, userID int64) error {
+	m := make(map[string]string)
+	m[short] = original
+	return r.AddBatch(ctx, userID, m)
 
 }
 
@@ -92,7 +80,7 @@ func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]Stored
 	return r.cache.GetUserURLs(ctx, userID)
 }
 
-func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, userID int64, shortIDs ...string) {
-	r.cache.MarkDeletedUserURLs(ctx, userID, shortIDs...)
+func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
+	r.cache.MarkDeletedUserURLs(ctx, urls...)
 	//TODO
 }

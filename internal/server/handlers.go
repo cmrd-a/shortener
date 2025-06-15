@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/cmrd-a/shortener/internal/storage"
+
 	"github.com/cmrd-a/shortener/internal/server/middleware"
 
 	"github.com/cmrd-a/shortener/internal/service"
@@ -15,9 +17,9 @@ import (
 )
 
 type Servicer interface {
-	Shorten(string, int64) (string, error)
+	Shorten(context.Context, string, int64) (string, error)
 	ShortenBatch(context.Context, int64, map[string]string) (map[string]string, error)
-	GetOriginal(string) (string, error)
+	GetOriginal(context.Context, string) (string, error)
 	Ping(context.Context) error
 	GetUserURLs(context.Context, int64) ([]service.SvcURL, error)
 	DeleteUserURLs(context.Context, int64, ...string)
@@ -36,7 +38,7 @@ func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 		userID := middleware.GetUserID(req.Context())
-		shortLink, err := svc.Shorten(originalLink, userID)
+		shortLink, err := svc.Shorten(req.Context(), originalLink, userID)
 		var alreadyExistError *service.OriginalExistError
 		if errors.As(err, &alreadyExistError) {
 			res.WriteHeader(http.StatusConflict)
@@ -64,12 +66,15 @@ func GetLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-		original, err := svc.GetOriginal(ID)
+		original, err := svc.GetOriginal(req.Context(), ID)
 		if err != nil {
+			if errors.Is(err, storage.ErrURLIsDeleted) {
+				http.Error(res, err.Error(), http.StatusGone)
+				return
+			}
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		//res.WriteHeader(http.StatusGone) TODO:
 		http.Redirect(res, req, original, http.StatusTemporaryRedirect)
 	}
 }
@@ -87,7 +92,7 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 		userID := middleware.GetUserID(req.Context())
-		shortLink, err := svc.Shorten(reqJSON.URL, userID)
+		shortLink, err := svc.Shorten(req.Context(), reqJSON.URL, userID)
 		var alreadyExistError *service.OriginalExistError
 		if errors.As(err, &alreadyExistError) {
 			body, err := ShortenResponse{Result: alreadyExistError.Short}.MarshalJSON()
@@ -247,7 +252,7 @@ func DeleteUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 
-		//svc.GetUserURLs(req.Context(), userID)
+		svc.DeleteUserURLs(req.Context(), userID, reqJSON...)
 		res.WriteHeader(http.StatusAccepted)
 	}
 }

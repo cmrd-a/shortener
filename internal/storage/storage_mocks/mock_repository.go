@@ -36,17 +36,17 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // Add mocks base method.
-func (m *MockRepository) Add(arg0, arg1 string, arg2 int64) error {
+func (m *MockRepository) Add(arg0 context.Context, arg1, arg2 string, arg3 int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Add", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Add", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Add indicates an expected call of Add.
-func (mr *MockRepositoryMockRecorder) Add(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Add(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRepository)(nil).Add), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRepository)(nil).Add), arg0, arg1, arg2, arg3)
 }
 
 // AddBatch mocks base method.
@@ -64,18 +64,18 @@ func (mr *MockRepositoryMockRecorder) AddBatch(arg0, arg1, arg2 interface{}) *go
 }
 
 // Get mocks base method.
-func (m *MockRepository) Get(arg0 string) (string, error) {
+func (m *MockRepository) Get(arg0 context.Context, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockRepositoryMockRecorder) Get(arg0 interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), arg0, arg1)
 }
 
 // GetUserURLs mocks base method.
@@ -94,19 +94,19 @@ func (mr *MockRepositoryMockRecorder) GetUserURLs(arg0, arg1 interface{}) *gomoc
 }
 
 // MarkDeletedUserURLs mocks base method.
-func (m *MockRepository) MarkDeletedUserURLs(arg0 context.Context, arg1 int64, arg2 ...string) {
+func (m *MockRepository) MarkDeletedUserURLs(arg0 context.Context, arg1 ...storage.URLForDelete) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "MarkDeletedUserURLs", varargs...)
 }
 
 // MarkDeletedUserURLs indicates an expected call of MarkDeletedUserURLs.
-func (mr *MockRepositoryMockRecorder) MarkDeletedUserURLs(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) MarkDeletedUserURLs(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkDeletedUserURLs", reflect.TypeOf((*MockRepository)(nil).MarkDeletedUserURLs), varargs...)
 }
 

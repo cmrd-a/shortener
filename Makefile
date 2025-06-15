@@ -2,6 +2,7 @@ build:
 	go build -o ./bin/shortener ./cmd/shortener
 
 test:
+	go test -cover ./...
 	go test ./... -v
 
 gen:
@@ -20,12 +21,14 @@ lint:
 tidy:
 	go mod tidy
 
-check: build tidy format lint test
+check: build tidy format lint test cover
 
 cover:
+	go test -cover ./...
 	go test ./... -coverpkg='./internal/...', -coverprofile coverage.out.tmp
 	cat coverage.out.tmp | grep -v "_easyjson.go\|mocks" > coverage.out
 	rm coverage.out.tmp
+
 
 cover-html: cover
 	go tool cover -html=coverage.out

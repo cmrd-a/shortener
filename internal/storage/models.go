@@ -8,3 +8,8 @@ type StoredURL struct {
 	UserID      int64  `json:"user_id"`
 	IsDeleted   bool   `json:"is_deleted"`
 }
+
+type URLForDelete struct {
+	ShortID string
+	UserID  int64
+}

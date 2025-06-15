@@ -4,4 +4,5 @@ type SvcURL struct {
 	ShortURL    string
 	OriginalURL string
 	UserID      int64
+	IsDeleted   bool
 }
