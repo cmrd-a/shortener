@@ -71,3 +71,7 @@ func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URL
 		}
 	}
 }
+
+func (r InMemoryRepository) GetAll() map[string]StoredURL {
+	return r.store
+}

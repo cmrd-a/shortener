@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -79,5 +80,23 @@ func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]Stored
 
 func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
 	r.cache.MarkDeletedUserURLs(ctx, urls...)
-	//TODO
+
+	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	defer file.Close()
+	all := r.cache.GetAll()
+	var result []byte
+	for _, url := range all {
+		data, err := json.Marshal(url)
+		if err != nil {
+			fmt.Printf("error while marshalling %v", err)
+		}
+		data = append(data, '\n')
+		result = append(result, data...)
+	}
+
+	_, err := file.Write(result)
+	if err != nil {
+		fmt.Printf("error while writing file %v", err)
+	}
+
 }
