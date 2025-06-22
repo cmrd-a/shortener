@@ -4,17 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 )
-
-//go:generate easyjson file.go
-
-//easyjson:json
-type StoredURL struct {
-	ID          string `json:"id"`
-	OriginalURL string `json:"original_url"`
-}
 
 type FileRepository struct {
 	path  string
@@ -30,46 +23,39 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	if err != nil {
 		return nil, err
 	}
-	for _, str := range strings.Split(string(data), "\n") {
+	for str := range strings.SplitSeq(string(data), "\n") {
 		s := StoredURL{}
-		s.UnmarshalJSON([]byte(str))
-		r.cache.Add(s.ID, s.OriginalURL)
+		err := s.UnmarshalJSON([]byte(str))
+		if err != nil {
+			return nil, err
+		}
+		err = r.cache.Add(context.TODO(), s.ShortID, s.OriginalURL, s.UserID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return r, nil
 }
 
-func (r FileRepository) Get(short string) (string, error) {
-	url, err := r.cache.Get(short)
-	return url, err
+func (r FileRepository) Get(ctx context.Context, short string) (string, error) {
+	return r.cache.Get(ctx, short)
 }
 
-func (r FileRepository) Add(short, original string) error {
-	err := r.cache.Add(short, original)
+func (r FileRepository) Add(ctx context.Context, short, original string, userID int64) error {
+	return r.AddBatch(ctx, userID, StoredURL{ShortID: short, OriginalURL: original, UserID: userID})
+}
+
+func (r FileRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
+	err := r.cache.AddBatch(ctx, userID, batch...)
 	if err != nil {
 		return err
 	}
-	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	defer file.Close()
-
-	s := StoredURL{short, original}
-	data, err := json.Marshal(&s)
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	_, err = file.Write(data)
-	return err
-
-}
-
-func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error {
-	r.cache.AddBatch(ctx, b)
 	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	defer file.Close()
 
 	var result []byte
-	for short, original := range b {
-		data, err := json.Marshal(StoredURL{short, original})
+	for _, url := range batch {
+		data, err := json.Marshal(url)
 		if err != nil {
 			return err
 		}
@@ -77,7 +63,7 @@ func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error
 		result = append(result, data...)
 	}
 
-	_, err := file.Write(result)
+	_, err = file.Write(result)
 	if err != nil {
 		return err
 	}
@@ -86,4 +72,31 @@ func (r FileRepository) AddBatch(ctx context.Context, b map[string]string) error
 
 func (r FileRepository) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
+	return r.cache.GetUserURLs(ctx, userID)
+}
+
+func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
+	r.cache.MarkDeletedUserURLs(ctx, urls...)
+
+	file, _ := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	defer file.Close()
+	all := r.cache.GetAll()
+	var result []byte
+	for _, url := range all {
+		data, err := json.Marshal(url)
+		if err != nil {
+			fmt.Printf("error while marshalling %v", err)
+		}
+		data = append(data, '\n')
+		result = append(result, data...)
+	}
+
+	_, err := file.Write(result)
+	if err != nil {
+		fmt.Printf("error while writing file %v", err)
+	}
+
 }

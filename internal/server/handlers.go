@@ -6,6 +6,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/cmrd-a/shortener/internal/storage"
+
+	"github.com/cmrd-a/shortener/internal/server/middleware"
+
 	"github.com/cmrd-a/shortener/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -13,10 +17,18 @@ import (
 )
 
 type Servicer interface {
-	Shorten(string) (string, error)
-	ShortenBatch(context.Context, map[string]string) (map[string]string, error)
-	GetOriginal(string) (string, error)
-	Ping(context.Context) error
+	// Сокращает ссылку
+	Shorten(ctx context.Context, original string, userID int64) (short string, err error)
+	// Сокращает ссылки
+	ShortenBatch(ctx context.Context, userID int64, corrOrig map[string]string) (corrShort map[string]string, err error)
+	//Возвращает оригинальную ссылку
+	GetOriginal(ctx context.Context, short string) (original string, err error)
+	// Проверяет соединение с базой данных
+	Ping(ctx context.Context) (err error)
+	// Возвращает все ссылки пользователя
+	GetUserURLs(ctx context.Context, userID int64) (urls []service.SvcURL, err error)
+	// Удаляет ссылки пользователя
+	DeleteUserURLs(ctx context.Context, userID int64, shortIDs ...string)
 }
 
 func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
@@ -31,7 +43,8 @@ func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-		shortLink, err := svc.Shorten(originalLink)
+		userID := middleware.GetUserID(req.Context())
+		shortLink, err := svc.Shorten(req.Context(), originalLink, userID)
 		var alreadyExistError *service.OriginalExistError
 		if errors.As(err, &alreadyExistError) {
 			res.WriteHeader(http.StatusConflict)
@@ -59,8 +72,12 @@ func GetLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-		original, err := svc.GetOriginal(ID)
+		original, err := svc.GetOriginal(req.Context(), ID)
 		if err != nil {
+			if errors.Is(err, storage.ErrURLIsDeleted) {
+				http.Error(res, err.Error(), http.StatusGone)
+				return
+			}
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -80,17 +97,17 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			http.Error(res, "url is empty", http.StatusBadRequest)
 			return
 		}
-
-		shortLink, err := svc.Shorten(reqJSON.URL)
+		userID := middleware.GetUserID(req.Context())
+		shortLink, err := svc.Shorten(req.Context(), reqJSON.URL, userID)
 		var alreadyExistError *service.OriginalExistError
+		res.Header().Set("Content-Type", "application/json")
 		if errors.As(err, &alreadyExistError) {
 			body, err := ShortenResponse{Result: alreadyExistError.Short}.MarshalJSON()
 			if err != nil {
 				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusConflict)
-
 			res.Write(body)
 			return
 		}
@@ -101,7 +118,6 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 
 		resJSON := &ShortenResponse{Result: shortLink}
 
-		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusCreated)
 
 		resBytes, err := resJSON.MarshalJSON()
@@ -127,6 +143,7 @@ func ShortenBatchHandler(svc Servicer) func(http.ResponseWriter, *http.Request) 
 		err := easyjson.UnmarshalFromReader(req.Body, &reqJSON)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
 		}
 		corrOrig := make(map[string]string, len(reqJSON))
 		for _, reqItem := range reqJSON {
@@ -144,8 +161,8 @@ func ShortenBatchHandler(svc Servicer) func(http.ResponseWriter, *http.Request) 
 			}
 			corrOrig[reqItem.CorrelationID] = reqItem.OriginalURL
 		}
-
-		corrShort, err := svc.ShortenBatch(req.Context(), corrOrig)
+		userID := middleware.GetUserID(req.Context())
+		corrShort, err := svc.ShortenBatch(req.Context(), userID, corrOrig)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -181,5 +198,66 @@ func PingHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 		res.WriteHeader(http.StatusOK)
+	}
+}
+
+func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		userID := middleware.GetUserID(req.Context())
+		if userID == 0 {
+			res.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		urls, err := svc.GetUserURLs(req.Context(), userID)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if len(urls) == 0 {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusOK)
+
+		resJSON := make(GetUserURLsResponse, 0)
+		for _, u := range urls {
+			item := GetUserURLsResponseItem{ShortURL: u.ShortURL, OriginalURL: u.OriginalURL}
+			resJSON = append(resJSON, item)
+		}
+
+		resBytes, err := resJSON.MarshalJSON()
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = res.Write(resBytes)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func DeleteUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		userID := middleware.GetUserID(req.Context())
+		if userID == 0 {
+			res.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		var reqJSON DeleteUserURLsRequest
+		err := easyjson.UnmarshalFromReader(req.Body, &reqJSON)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		svc.DeleteUserURLs(req.Context(), userID, reqJSON...)
+		res.WriteHeader(http.StatusAccepted)
 	}
 }

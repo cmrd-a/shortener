@@ -6,44 +6,72 @@ import (
 )
 
 type InMemoryRepository struct {
-	store map[string]string
+	store map[string]StoredURL
 }
 
 func NewInMemoryRepository() *InMemoryRepository {
-	return &InMemoryRepository{store: make(map[string]string)}
+	return &InMemoryRepository{store: make(map[string]StoredURL)}
 }
 
-func (a InMemoryRepository) Get(short string) (string, error) {
-	original, ok := a.store[short]
+func (r InMemoryRepository) Get(ctx context.Context, short string) (string, error) {
+	storedURL, ok := r.store[short]
 	if !ok {
 		return "", errors.New("url not found")
 	}
-	return original, nil
+	if storedURL.IsDeleted {
+		return "", ErrURLIsDeleted
+	}
+	return storedURL.OriginalURL, nil
 }
 
-func (a InMemoryRepository) CheckOriginalExist(original string) (string, bool) {
-	for key, value := range a.store {
-		if value == original {
+func (r InMemoryRepository) checkOriginalExist(original string) (string, bool) {
+	for key, value := range r.store {
+		if value.OriginalURL == original {
 			return key, true
 		}
 	}
 	return "", false
 }
 
-func (a InMemoryRepository) Add(short, original string) error {
-	if oldShort, ok := a.CheckOriginalExist(original); ok {
+func (r InMemoryRepository) Add(ctx context.Context, short, original string, userID int64) error {
+	if oldShort, ok := r.checkOriginalExist(original); ok {
 		return NewOriginalExistError(oldShort)
 	}
-	a.store[short] = original
+	r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
 	return nil
 }
-func (a InMemoryRepository) AddBatch(ctx context.Context, b map[string]string) error {
-	for short, original := range b {
-		a.store[short] = original
+
+func (r InMemoryRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
+	for _, url := range batch {
+		r.store[url.ShortID] = StoredURL{ShortID: url.ShortID, OriginalURL: url.OriginalURL, UserID: userID}
 	}
 	return nil
 }
 
-func (a InMemoryRepository) Ping(ctx context.Context) error {
+func (r InMemoryRepository) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (r InMemoryRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
+	var urls []StoredURL
+	for _, value := range r.store {
+		if value.UserID == userID && !value.IsDeleted {
+			urls = append(urls, value)
+		}
+	}
+	return urls, nil
+}
+
+func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
+	for _, url := range urls {
+		if r.store[url.ShortID].UserID == url.UserID {
+			v := r.store[url.ShortID]
+			v.IsDeleted = true
+			r.store[url.ShortID] = v
+		}
+	}
+}
+
+func (r InMemoryRepository) GetAll() map[string]StoredURL {
+	return r.store
 }

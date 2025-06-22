@@ -1,17 +1,22 @@
 package storage
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-type OriginalExistError struct {
+type ErrOriginalExist struct {
 	Short string
 }
 
-func (oe *OriginalExistError) Error() string {
+func (oe *ErrOriginalExist) Error() string {
 	return fmt.Sprintf("original is exist with short:%s", oe.Short)
 }
 
 func NewOriginalExistError(short string) error {
-	return &OriginalExistError{
+	return &ErrOriginalExist{
 		Short: short,
 	}
 }
+
+var ErrURLIsDeleted = errors.New("url is deleted")

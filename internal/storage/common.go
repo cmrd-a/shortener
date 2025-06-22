@@ -7,10 +7,12 @@ import (
 )
 
 type Repository interface {
-	Get(string) (string, error)
-	Add(string, string) error
-	AddBatch(context.Context, map[string]string) error
+	Get(context.Context, string) (string, error)
+	Add(context.Context, string, string, int64) error
+	AddBatch(context.Context, int64, ...StoredURL) error
 	Ping(context.Context) error
+	GetUserURLs(context.Context, int64) ([]StoredURL, error)
+	MarkDeletedUserURLs(context.Context, ...URLForDelete)
 }
 
 func MakeRepository(cfg *config.Config) (Repository, error) {

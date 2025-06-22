@@ -30,8 +30,10 @@ func (r PgRepository) Bootstrap() error {
 		CREATE TABLE IF NOT EXISTS url
 		(
 			id       BIGSERIAL PRIMARY KEY,
+			user_id  BIGINT NOT NULL DEFAULT 0,
 			short    text NOT NULL,
 			original text NOT NULL,
+			is_deleted bool NOT NULL DEFAULT false,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		)
 	`)
@@ -52,6 +54,13 @@ func (r PgRepository) Bootstrap() error {
 	if err != nil {
 		return err
 	}
+	_, err = r.pool.Exec(context.Background(), `
+		CREATE INDEX IF NOT EXISTS user_id_index
+		ON url (user_id)
+	`)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -59,28 +68,32 @@ func (r PgRepository) Ping(ctx context.Context) error {
 	return r.pool.Ping(ctx)
 }
 
-func (r PgRepository) Get(short string) (string, error) {
+func (r PgRepository) Get(ctx context.Context, short string) (string, error) {
 	var original string
-	err := r.pool.QueryRow(context.Background(), "SELECT original FROM url  WHERE short=$1", short).Scan(&original)
+	var isDeleted bool
+	err := r.pool.QueryRow(ctx, "SELECT original, is_deleted FROM url  WHERE short=$1", short).Scan(&original, &isDeleted)
 	if err != nil {
 		return "", err
+	}
+	if isDeleted {
+		return "", ErrURLIsDeleted
 	}
 	return original, nil
 }
 
-func (r PgRepository) Add(short, original string) error {
-	row := r.pool.QueryRow(context.Background(), `
+func (r PgRepository) Add(ctx context.Context, short, original string, userID int64) error {
+	row := r.pool.QueryRow(ctx, `
 		WITH ins AS (
 			INSERT INTO url
-				(short, original)
-				VALUES ($1, $2)
+				(user_id, short, original)
+				VALUES ($1, $2, $3)
 				ON CONFLICT DO NOTHING),
 			 dup AS (SELECT short
 					 FROM url
-					 WHERE original = $2)
+					 WHERE original = $3)
 		SELECT short
 		FROM dup
-	`, short, original)
+	`, userID, short, original)
 	var existingShort string
 	err := row.Scan(&existingShort)
 	if err != nil {
@@ -92,19 +105,58 @@ func (r PgRepository) Add(short, original string) error {
 	return NewOriginalExistError(existingShort)
 }
 
-func (r PgRepository) AddBatch(ctx context.Context, b map[string]string) error {
-	batch := &pgx.Batch{}
-	for short, original := range b {
-		batch.Queue("INSERT INTO url (short, original) VALUES ($1, $2)", short, original)
+func (r PgRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
+	b := &pgx.Batch{}
+	for _, url := range batch {
+		b.Queue("INSERT INTO url (short, original, user_id) VALUES ($1, $2, $3)", url.ShortID, url.OriginalURL, userID)
 	}
-	results := r.pool.SendBatch(ctx, batch)
+	results := r.pool.SendBatch(ctx, b)
 	defer results.Close()
 
-	for i := 0; i < len(b); i++ {
+	for i := range len(batch) {
 		_, err := results.Exec()
 		if err != nil {
 			return fmt.Errorf("error executing batch command %d: %w", i, err)
 		}
 	}
 	return nil
+}
+
+func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT short, original, is_deleted
+		FROM url
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls = make([]StoredURL, 0)
+	for rows.Next() {
+		url := StoredURL{}
+		if err := rows.Scan(&url.ShortID, &url.OriginalURL, &url.IsDeleted); err != nil {
+			return nil, err
+		}
+		if !url.IsDeleted {
+			urls = append(urls, url)
+		}
+	}
+	return urls, nil
+}
+
+func (r PgRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
+	batch := &pgx.Batch{}
+	for _, url := range urls {
+		batch.Queue("UPDATE url SET is_deleted=true WHERE short=$1 AND user_id=$2", url.ShortID, url.UserID)
+	}
+	results := r.pool.SendBatch(ctx, batch)
+	defer results.Close()
+	for i := range len(urls) {
+		_, err := results.Exec()
+		if err != nil {
+			fmt.Printf("error executing batch command %d: %v", i, err)
+		}
+	}
 }
