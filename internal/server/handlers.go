@@ -17,12 +17,18 @@ import (
 )
 
 type Servicer interface {
-	Shorten(context.Context, string, int64) (string, error)
-	ShortenBatch(context.Context, int64, map[string]string) (map[string]string, error)
-	GetOriginal(context.Context, string) (string, error)
-	Ping(context.Context) error
-	GetUserURLs(context.Context, int64) ([]service.SvcURL, error)
-	DeleteUserURLs(context.Context, int64, ...string)
+	// Сокращает ссылку
+	Shorten(ctx context.Context, original string, userID int64) (short string, err error)
+	// Сокращает ссылки
+	ShortenBatch(ctx context.Context, userID int64, corrOrig map[string]string) (corrShort map[string]string, err error)
+	//Возвращает оригинальную ссылку
+	GetOriginal(ctx context.Context, short string) (original string, err error)
+	// Проверяет соединение с базой данных
+	Ping(ctx context.Context) (err error)
+	// Возвращает все ссылки пользователя
+	GetUserURLs(ctx context.Context, userID int64) (urls []service.SvcURL, err error)
+	// Удаляет ссылки пользователя
+	DeleteUserURLs(ctx context.Context, userID int64, shortIDs ...string)
 }
 
 func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
@@ -94,14 +100,14 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 		userID := middleware.GetUserID(req.Context())
 		shortLink, err := svc.Shorten(req.Context(), reqJSON.URL, userID)
 		var alreadyExistError *service.OriginalExistError
+		res.Header().Set("Content-Type", "application/json")
 		if errors.As(err, &alreadyExistError) {
 			body, err := ShortenResponse{Result: alreadyExistError.Short}.MarshalJSON()
 			if err != nil {
 				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusConflict)
-
 			res.Write(body)
 			return
 		}
@@ -112,7 +118,6 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 
 		resJSON := &ShortenResponse{Result: shortLink}
 
-		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusCreated)
 
 		resBytes, err := resJSON.MarshalJSON()
@@ -138,6 +143,7 @@ func ShortenBatchHandler(svc Servicer) func(http.ResponseWriter, *http.Request) 
 		err := easyjson.UnmarshalFromReader(req.Body, &reqJSON)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
 		}
 		corrOrig := make(map[string]string, len(reqJSON))
 		for _, reqItem := range reqJSON {
@@ -223,8 +229,6 @@ func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 			resJSON = append(resJSON, item)
 		}
 
-		res.Header().Set("Content-Type", "application/json")
-
 		resBytes, err := resJSON.MarshalJSON()
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -250,6 +254,7 @@ func DeleteUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request
 		err := easyjson.UnmarshalFromReader(req.Body, &reqJSON)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		svc.DeleteUserURLs(req.Context(), userID, reqJSON...)

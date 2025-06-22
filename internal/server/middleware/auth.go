@@ -2,8 +2,9 @@ package middleware
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
-	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -72,6 +73,15 @@ func GetUserID(ctx context.Context) int64 {
 	return v
 }
 
+func generateUserID() (int64, error) {
+	var b [8]byte
+	_, err := rand.Read(b[:])
+	if err != nil {
+		return 0, err
+	}
+	return int64(binary.BigEndian.Uint64(b[:])) & 0x7FFFFFFFFFFFFFFF, nil
+}
+
 func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -79,7 +89,10 @@ func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
 			if err != nil {
 				if errors.Is(err, http.ErrNoCookie) {
 					log.Debug("no cookie")
-					userID := int64(rand.Intn(1000))
+					userID, err := generateUserID()
+					if err != nil {
+						log.Error(err.Error())
+					}
 					newCookie, err := CreateCookie(userID)
 					if err != nil {
 						log.Error(err.Error())
