@@ -6,11 +6,15 @@ import (
 )
 
 type InMemoryRepository struct {
-	store map[string]StoredURL
+	store     map[string]StoredURL
+	userIndex map[int64][]string
 }
 
 func NewInMemoryRepository() *InMemoryRepository {
-	return &InMemoryRepository{store: make(map[string]StoredURL)}
+	return &InMemoryRepository{
+		store:     make(map[string]StoredURL),
+		userIndex: make(map[int64][]string),
+	}
 }
 
 func (r InMemoryRepository) Get(ctx context.Context, short string) (string, error) {
@@ -38,6 +42,7 @@ func (r InMemoryRepository) Add(ctx context.Context, short, original string, use
 		return NewOriginalExistError(oldShort)
 	}
 	r.store[short] = StoredURL{ShortID: short, OriginalURL: original, UserID: userID}
+	r.userIndex[userID] = append(r.userIndex[userID], short)
 	return nil
 }
 
@@ -53,10 +58,15 @@ func (r InMemoryRepository) Ping(ctx context.Context) error {
 }
 
 func (r InMemoryRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
-	var urls []StoredURL
-	for _, value := range r.store {
-		if value.UserID == userID && !value.IsDeleted {
-			urls = append(urls, value)
+	shortIDs, exists := r.userIndex[userID]
+	if !exists {
+		return []StoredURL{}, nil
+	}
+
+	urls := make([]StoredURL, 0, len(shortIDs))
+	for _, shortID := range shortIDs {
+		if storedURL, ok := r.store[shortID]; ok && !storedURL.IsDeleted {
+			urls = append(urls, storedURL)
 		}
 	}
 	return urls, nil
