@@ -29,6 +29,9 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
+
+// RequestResponseLogger returns middleware that logs HTTP request and response details.
+// It logs the method, URI, duration, status code, and response size for each request.
 func RequestResponseLogger(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

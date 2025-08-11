@@ -9,11 +9,13 @@ import (
 	"strings"
 )
 
+// FileRepository implements the Repository interface using file-based persistence with in-memory caching.
 type FileRepository struct {
 	path  string
 	cache *InMemoryRepository
 }
 
+// NewFileRepository creates a new FileRepository instance that persists data to a file while using an in-memory cache for fast access.
 func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository, error) {
 	r := &FileRepository{path, cache}
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
@@ -37,14 +39,17 @@ func NewFileRepository(path string, cache *InMemoryRepository) (*FileRepository,
 	return r, nil
 }
 
+// Get retrieves the original URL for a given short URL identifier from the cache.
 func (r FileRepository) Get(ctx context.Context, short string) (string, error) {
 	return r.cache.Get(ctx, short)
 }
 
+// Add stores a new URL mapping both in cache and persists it to the file.
 func (r FileRepository) Add(ctx context.Context, short, original string, userID int64) error {
 	return r.AddBatch(ctx, userID, StoredURL{ShortID: short, OriginalURL: original, UserID: userID})
 }
 
+// AddBatch stores multiple URL mappings both in cache and appends them to the file.
 func (r FileRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
 	err := r.cache.AddBatch(ctx, userID, batch...)
 	if err != nil {
@@ -70,14 +75,17 @@ func (r FileRepository) AddBatch(ctx context.Context, userID int64, batch ...Sto
 	return nil
 }
 
+// Ping checks the health of the repository (always returns nil for file storage).
 func (r FileRepository) Ping(ctx context.Context) error {
 	return nil
 }
 
+// GetUserURLs retrieves all URLs created by a specific user from the cache.
 func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
 	return r.cache.GetUserURLs(ctx, userID)
 }
 
+// MarkDeletedUserURLs marks the specified URLs as deleted in cache and rewrites the entire file.
 func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
 	r.cache.MarkDeletedUserURLs(ctx, urls...)
 

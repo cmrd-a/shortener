@@ -13,11 +13,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// Claims represents JWT token claims containing user ID and standard registered claims.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID int64
 }
 
+// BuildJWTString creates a JWT token string for the given user ID.
 func BuildJWTString(userID int64) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -34,6 +36,7 @@ func BuildJWTString(userID int64) (string, error) {
 	return tokenString, nil
 }
 
+// ParseToken parses a JWT token string and returns the user ID.
 func ParseToken(tokenString string) (int64, error) {
 	claims := &Claims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
@@ -42,6 +45,7 @@ func ParseToken(tokenString string) (int64, error) {
 	return claims.UserID, err
 }
 
+// CreateCookie creates an HTTP cookie containing a JWT token for the given user ID.
 func CreateCookie(userID int64) (*http.Cookie, error) {
 	token, err := BuildJWTString(userID)
 	if err != nil {
@@ -65,6 +69,7 @@ const (
 	userIDKey ctxKey = iota
 )
 
+// GetUserID extracts the user ID from the request context.
 func GetUserID(ctx context.Context) int64 {
 	v, ok := ctx.Value(userIDKey).(int64)
 	if !ok {
@@ -82,6 +87,8 @@ func generateUserID() (int64, error) {
 	return int64(binary.BigEndian.Uint64(b[:])) & 0x7FFFFFFFFFFFFFFF, nil
 }
 
+// UpsertAuthCookie returns middleware that ensures each request has a valid authentication cookie.
+// If no cookie exists or is invalid, it creates a new one with a generated user ID.
 func UpsertAuthCookie(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

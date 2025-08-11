@@ -6,10 +6,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// Server represents the HTTP server with its router and middleware configuration.
 type Server struct {
 	Router *chi.Mux
 }
 
+// NewServer creates a new Server instance with configured middleware and routes.
 func NewServer(log *zap.Logger, service Servicer) *Server {
 	s := &Server{chi.NewRouter()}
 	s.Router.Use(
