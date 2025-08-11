@@ -48,14 +48,17 @@ func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	}
 }
 
+// Header returns the header map that will be sent by WriteHeader.
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
+// Write writes the compressed data to the underlying ResponseWriter.
 func (c *compressWriter) Write(p []byte) (int, error) {
 	return c.zw.Write(p)
 }
 
+// WriteHeader writes the HTTP status code and headers to the underlying ResponseWriter.
 func (c *compressWriter) WriteHeader(statusCode int) {
 	if statusCode < 300 {
 		c.w.Header().Set("Content-Encoding", "gzip")
@@ -63,6 +66,7 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 	c.w.WriteHeader(statusCode)
 }
 
+// Close closes the gzip writer.
 func (c *compressWriter) Close() error {
 	return c.zw.Close()
 }
