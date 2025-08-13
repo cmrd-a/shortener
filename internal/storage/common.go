@@ -20,9 +20,9 @@ type Repository interface {
 // It returns a PostgreSQL repository if DatabaseDSN is provided,
 // a file-backed repository if FileStoragePath is provided,
 // or an in-memory repository as the default fallback.
-func MakeRepository(cfg *config.Config) (Repository, error) {
+func MakeRepository(ctx context.Context, cfg *config.Config) (Repository, error) {
 	if cfg.DatabaseDSN != "" {
-		return NewPgRepository(cfg.DatabaseDSN)
+		return NewPgRepository(ctx, cfg.DatabaseDSN)
 	}
 	inMemoryRepo := NewInMemoryRepository()
 	if cfg.FileStoragePath != "" {

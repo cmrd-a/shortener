@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -20,7 +21,8 @@ func main() {
 		log.Printf("ERROR: failed to initialize logger %s \n", err)
 		zl = zap.NewNop()
 	}
-	repo, err := storage.MakeRepository(cfg)
+	ctx := context.Background()
+	repo, err := storage.MakeRepository(ctx, cfg)
 	if err != nil {
 		log.Fatalf("ERROR: failed to initialize repository %s \n", err)
 	}

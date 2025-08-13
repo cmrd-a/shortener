@@ -16,8 +16,8 @@ type PgRepository struct {
 
 // NewPgRepository creates a new PgRepository instance with a PostgreSQL connection pool.
 // It initializes the database schema by calling Bootstrap().
-func NewPgRepository(dsn string) (*PgRepository, error) {
-	pool, err := pgxpool.New(context.Background(), dsn)
+func NewPgRepository(ctx context.Context, dsn string) (*PgRepository, error) {
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (r PgRepository) Bootstrap() error {
 			user_id  BIGINT NOT NULL DEFAULT 0,
 			short    text NOT NULL,
 			original text NOT NULL,
-			is_deleted bool NOT NULL DEFAULT false,
+			is_deleted bool NOT NULL DEFAULT FALSE,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		)
 	`)
@@ -160,7 +160,7 @@ func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredUR
 func (r PgRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
 	batch := &pgx.Batch{}
 	for _, url := range urls {
-		batch.Queue("UPDATE url SET is_deleted=true WHERE short=$1 AND user_id=$2", url.ShortID, url.UserID)
+		batch.Queue("UPDATE url SET is_deleted=TRUE WHERE short=$1 AND user_id=$2", url.ShortID, url.UserID)
 	}
 	results := r.pool.SendBatch(ctx, batch)
 	defer results.Close()

@@ -34,7 +34,7 @@ type ShortenBatchResponseItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-// UserURLsResponse represents the response containing all URLs for a specific user.
+// GetUserURLsResponse represents the response containing all URLs for a specific user.
 //
 //easyjson:json
 type GetUserURLsResponse []GetUserURLsResponseItem
