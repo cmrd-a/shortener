@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,7 +24,8 @@ func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
 
 var cfg = config.NewConfig(false)
 var zl, _ = logger.NewLogger(cfg.LogLevel)
-var repo, _ = storage.MakeRepository(cfg)
+var ctx = context.Background()
+var repo, _ = storage.MakeRepository(ctx, cfg)
 var generator = service.NewShortGenerator()
 var server = NewServer(zl, service.NewURLService(generator, cfg.BaseURL, repo))
 

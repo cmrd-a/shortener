@@ -9,12 +9,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// PgRepository implements the Repository interface using PostgreSQL as the storage backend.
 type PgRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewPgRepository(dsn string) (*PgRepository, error) {
-	pool, err := pgxpool.New(context.Background(), dsn)
+// NewPgRepository creates a new PgRepository instance with a PostgreSQL connection pool.
+// It initializes the database schema by calling Bootstrap().
+func NewPgRepository(ctx context.Context, dsn string) (*PgRepository, error) {
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +28,8 @@ func NewPgRepository(dsn string) (*PgRepository, error) {
 	}
 	return r, nil
 }
+
+// Bootstrap creates the necessary database tables and indexes for the URL shortener.
 func (r PgRepository) Bootstrap() error {
 	_, err := r.pool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS url
@@ -33,7 +38,7 @@ func (r PgRepository) Bootstrap() error {
 			user_id  BIGINT NOT NULL DEFAULT 0,
 			short    text NOT NULL,
 			original text NOT NULL,
-			is_deleted bool NOT NULL DEFAULT false,
+			is_deleted bool NOT NULL DEFAULT FALSE,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 		)
 	`)
@@ -64,10 +69,12 @@ func (r PgRepository) Bootstrap() error {
 	return nil
 }
 
+// Ping checks the health of the PostgreSQL database connection.
 func (r PgRepository) Ping(ctx context.Context) error {
 	return r.pool.Ping(ctx)
 }
 
+// Get retrieves the original URL for a given short URL identifier from PostgreSQL.
 func (r PgRepository) Get(ctx context.Context, short string) (string, error) {
 	var original string
 	var isDeleted bool
@@ -81,6 +88,7 @@ func (r PgRepository) Get(ctx context.Context, short string) (string, error) {
 	return original, nil
 }
 
+// Add stores a new URL mapping in PostgreSQL, checking for duplicates.
 func (r PgRepository) Add(ctx context.Context, short, original string, userID int64) error {
 	row := r.pool.QueryRow(ctx, `
 		WITH ins AS (
@@ -105,6 +113,7 @@ func (r PgRepository) Add(ctx context.Context, short, original string, userID in
 	return NewOriginalExistError(existingShort)
 }
 
+// AddBatch stores multiple URL mappings in PostgreSQL using a batch operation for efficiency.
 func (r PgRepository) AddBatch(ctx context.Context, userID int64, batch ...StoredURL) error {
 	b := &pgx.Batch{}
 	for _, url := range batch {
@@ -122,6 +131,7 @@ func (r PgRepository) AddBatch(ctx context.Context, userID int64, batch ...Store
 	return nil
 }
 
+// GetUserURLs retrieves all non-deleted URLs created by a specific user from PostgreSQL.
 func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT short, original, is_deleted
@@ -146,10 +156,11 @@ func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredUR
 	return urls, nil
 }
 
+// MarkDeletedUserURLs marks the specified URLs as deleted in PostgreSQL using a batch operation.
 func (r PgRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
 	batch := &pgx.Batch{}
 	for _, url := range urls {
-		batch.Queue("UPDATE url SET is_deleted=true WHERE short=$1 AND user_id=$2", url.ShortID, url.UserID)
+		batch.Queue("UPDATE url SET is_deleted=TRUE WHERE short=$1 AND user_id=$2", url.ShortID, url.UserID)
 	}
 	results := r.pool.SendBatch(ctx, batch)
 	defer results.Close()

@@ -16,6 +16,7 @@ import (
 	"github.com/mailru/easyjson"
 )
 
+// Servicer defines the interface for URL shortening service operations.
 type Servicer interface {
 	// Сокращает ссылку
 	Shorten(ctx context.Context, original string, userID int64) (short string, err error)
@@ -31,6 +32,7 @@ type Servicer interface {
 	DeleteUserURLs(ctx context.Context, userID int64, shortIDs ...string)
 }
 
+// AddLinkHandler returns an HTTP handler for shortening URLs via plain text body.
 func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		bodyBytes, err := io.ReadAll(req.Body)
@@ -65,6 +67,7 @@ func AddLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+// GetLinkHandler returns an HTTP handler for redirecting shortened URLs to their original URLs.
 func GetLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ID := chi.URLParam(req, "linkId")
@@ -85,6 +88,7 @@ func GetLinkHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+// ShortenHandler returns an HTTP handler for shortening URLs via JSON request body.
 func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		reqJSON := &ShortenRequest{}
@@ -133,6 +137,7 @@ func ShortenHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+// ShortenBatchHandler returns an HTTP handler for shortening multiple URLs in a single request.
 func ShortenBatchHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.ContentLength == 0 {
@@ -190,6 +195,7 @@ func ShortenBatchHandler(svc Servicer) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
+// PingHandler returns an HTTP handler for checking database connectivity.
 func PingHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		err := svc.Ping(req.Context())
@@ -201,6 +207,7 @@ func PingHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+// GetUserURLsHandler returns an HTTP handler for retrieving all URLs created by a user.
 func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		userID := middleware.GetUserID(req.Context())
@@ -242,6 +249,7 @@ func GetUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+// DeleteUserURLsHandler returns an HTTP handler for marking user URLs as deleted.
 func DeleteUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		userID := middleware.GetUserID(req.Context())

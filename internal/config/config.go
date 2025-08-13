@@ -7,6 +7,7 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
+// Config holds application configuration settings loaded from flags and environment variables.
 type Config struct {
 	ServerAddress   string
 	BaseURL         string
@@ -22,6 +23,8 @@ type envConfig struct {
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
+// NewConfig creates a new Config instance with default values from flags and environment variables.
+// If parse is true, it will parse command line flags.
 func NewConfig(parse bool) *Config {
 	cfg := &Config{}
 	var envCfg envConfig

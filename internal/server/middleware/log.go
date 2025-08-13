@@ -19,16 +19,21 @@ type (
 	}
 )
 
+// loggingResponseWriter wraps http.ResponseWriter to capture response status and size.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader writes the HTTP status code and headers to the underlying ResponseWriter.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
 }
+
+// RequestResponseLogger returns middleware that logs HTTP request and response details.
+// It logs the method, URI, duration, status code, and response size for each request.
 func RequestResponseLogger(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

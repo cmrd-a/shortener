@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// CheckContentType returns middleware that validates Content-Type header for API endpoints.
+// It ensures that POST and DELETE requests to /api/ endpoints have application/json content type.
 func CheckContentType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		if slices.Contains([]string{http.MethodPost, http.MethodDelete}, req.Method) &&
