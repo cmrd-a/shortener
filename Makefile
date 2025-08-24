@@ -1,6 +1,12 @@
 build:
 	go build -o ./bin/shortener ./cmd/shortener
 
+build-staticlint:
+	go build -o ./bin/staticlint ./cmd/staticlint
+
+staticlint: build-staticlint
+	./bin/staticlint ./...
+
 test:
 	go test -cover ./...
 	go test ./... -v
@@ -21,7 +27,7 @@ lint:
 tidy:
 	go mod tidy
 
-check: build tidy format lint test cover
+check: staticlint build tidy format lint test cover
 
 cover:
 	go test -cover ./...
