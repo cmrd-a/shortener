@@ -1,5 +1,11 @@
 build:
-	go build -o ./bin/shortener ./cmd/shortener
+	go build -o ./bin/shortener -ldflags "-X main.buildVersion=v1.0.1 -X 'main.buildDate=$$(date +'%Y/%m/%d %H:%M:%S')' -X main.buildCommit=$$(git rev-parse HEAD)" ./cmd/shortener
+
+build-staticlint:
+	go build -o ./bin/staticlint ./cmd/staticlint
+
+staticlint: build-staticlint
+	./bin/staticlint ./...
 
 test:
 	go test -cover ./...
@@ -21,7 +27,7 @@ lint:
 tidy:
 	go mod tidy
 
-check: build tidy format lint test cover
+check: staticlint build tidy format lint test cover
 
 cover:
 	go test -cover ./...
@@ -39,4 +45,3 @@ cover-cli: cover
 install-tools:
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install honnef.co/go/tools/cmd/staticcheck@latest
-
