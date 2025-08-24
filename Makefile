@@ -1,5 +1,5 @@
 build:
-	go build -o ./bin/shortener ./cmd/shortener
+	go build -o ./bin/shortener -ldflags "-X main.buildVersion=v1.0.1 -X 'main.buildDate=$$(date +'%Y/%m/%d %H:%M:%S')' -X main.buildCommit=$$(git rev-parse HEAD)" ./cmd/shortener
 
 build-staticlint:
 	go build -o ./bin/staticlint ./cmd/staticlint
@@ -45,4 +45,3 @@ cover-cli: cover
 install-tools:
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install honnef.co/go/tools/cmd/staticcheck@latest
-
