@@ -16,12 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
-	rr := httptest.NewRecorder()
-	s.Router.ServeHTTP(rr, req)
-	return rr
-}
-
 var cfg = config.NewConfig(false)
 var zl, _ = logger.NewLogger(cfg.LogLevel)
 var ctx = context.Background()
@@ -243,68 +237,24 @@ func TestGetLinkHandlerErrorCases(t *testing.T) {
 }
 
 func TestGetUserURLsHandler(t *testing.T) {
-	tests := []struct {
-		name        string
-		setupURLs   []string
-		resStatus   int
-		expectEmpty bool
-		skipAuth    bool
-	}{
+	tests := []TestSetup{
 		{
-			name:        "user_with_urls",
-			setupURLs:   []string{"https://example.com/1", "https://example.com/2"},
-			resStatus:   http.StatusOK,
-			expectEmpty: false,
-			skipAuth:    false,
+			URLs:        []string{"https://example.com/1", "https://example.com/2"},
+			ResStatus:   http.StatusOK,
+			ExpectEmpty: false,
+			SkipAuth:    false,
 		},
 		{
-			name:        "no_auth_cookie",
-			setupURLs:   []string{},
-			resStatus:   http.StatusNoContent,
-			expectEmpty: true,
-			skipAuth:    true,
+			URLs:        []string{},
+			ResStatus:   http.StatusNoContent,
+			ExpectEmpty: true,
+			SkipAuth:    true,
 		},
 	}
+
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup URLs if needed
-			var authCookie *http.Cookie
-			if len(tt.setupURLs) > 0 {
-				for _, url := range tt.setupURLs {
-					req1 := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(url))
-					req1.Body.Close()
-					res1 := executeRequest(req1, server)
-					if authCookie == nil {
-						// Get the auth cookie from first request
-						result := res1.Result()
-						for _, cookie := range result.Cookies() {
-							if cookie.Name == "Authorization" {
-								authCookie = cookie
-								break
-							}
-						}
-						result.Body.Close()
-					}
-				}
-			}
-
-			// Create request for getting user URLs
-			req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
-
-			// Add auth cookie if not skipping auth and we have one
-			if !tt.skipAuth && authCookie != nil {
-				req.AddCookie(authCookie)
-			}
-
-			res := executeRequest(req, server)
-
-			assert.Equal(t, tt.resStatus, res.Code)
-
-			if tt.resStatus == http.StatusOK {
-				assert.Greater(t, len(res.Body.String()), 0)
-				h := res.Header().Get("Content-Type")
-				assert.Equal(t, "application/json", h)
-			}
+		t.Run("", func(t *testing.T) {
+			runUserURLsTest(t, server, tt)
 		})
 	}
 }
