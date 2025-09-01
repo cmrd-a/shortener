@@ -16,12 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func executeRequest(req *http.Request, s *Server) *httptest.ResponseRecorder {
-	rr := httptest.NewRecorder()
-	s.Router.ServeHTTP(rr, req)
-	return rr
-}
-
 var cfg = config.NewConfig(false)
 var zl, _ = logger.NewLogger(cfg.LogLevel)
 var ctx = context.Background()
@@ -45,6 +39,9 @@ func TestAddLinkHandler(t *testing.T) {
 		want   want
 	}{
 		{name: "happy_path", params: params{method: http.MethodPost, url: "/", body: "https://zed.dev"}, want: want{stausCode: http.StatusCreated}},
+		{name: "empty_body", params: params{method: http.MethodPost, url: "/", body: ""}, want: want{stausCode: http.StatusBadRequest}},
+		{name: "invalid_method", params: params{method: http.MethodGet, url: "/", body: "https://example.com"}, want: want{stausCode: http.StatusMethodNotAllowed}},
+		{name: "long_url", params: params{method: http.MethodPost, url: "/", body: "https://verylongexampleurl.com/with/many/path/segments/and/query/parameters?param1=value1&param2=value2"}, want: want{stausCode: http.StatusCreated}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -114,6 +111,150 @@ func TestShortenHandler(t *testing.T) {
 				assert.Equal(t, "application/json", h)
 			}
 
+		})
+	}
+}
+
+func TestShortenBatchHandler(t *testing.T) {
+	tests := []struct {
+		name      string
+		reqBody   string
+		resStatus int
+		resLen    int
+	}{
+		{
+			name:      "happy_path_batch",
+			reqBody:   `[{"correlation_id": "1", "original_url": "https://golang.org"}, {"correlation_id": "2", "original_url": "https://github.com"}]`,
+			resStatus: http.StatusCreated,
+			resLen:    10,
+		},
+		{
+			name:      "empty_body",
+			reqBody:   "",
+			resStatus: http.StatusOK,
+		},
+		{
+			name:      "invalid_json",
+			reqBody:   `{"invalid": json}`,
+			resStatus: http.StatusBadRequest,
+		},
+		{
+			name:      "empty_array",
+			reqBody:   `[]`,
+			resStatus: http.StatusCreated,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(tt.reqBody))
+			req.Header.Set("Content-Type", "application/json")
+			res := executeRequest(req, server)
+
+			assert.Equal(t, tt.resStatus, res.Code)
+			if res.Code == http.StatusCreated {
+				resString := res.Body.String()
+				resLen := len(resString)
+				assert.GreaterOrEqual(t, resLen, tt.resLen)
+
+				h := res.Header().Get("Content-Type")
+				assert.Equal(t, "application/json", h)
+			}
+		})
+	}
+}
+
+func TestPingHandler(t *testing.T) {
+	tests := []struct {
+		name      string
+		resStatus int
+	}{
+		{
+			name:      "ping_success",
+			resStatus: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			res := executeRequest(req, server)
+
+			assert.Equal(t, tt.resStatus, res.Code)
+		})
+	}
+}
+
+func TestGetLinkHandlerErrorCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		linkID    string
+		resStatus int
+		setupLink bool
+		setupURL  string
+	}{
+		{
+			name:      "non_existent_link",
+			linkID:    "/nonexistent",
+			resStatus: http.StatusBadRequest,
+			setupLink: false,
+		},
+		{
+			name:      "empty_link_id",
+			linkID:    "/",
+			resStatus: http.StatusMethodNotAllowed,
+			setupLink: false,
+		},
+		{
+			name:      "valid_redirect",
+			linkID:    "",
+			resStatus: http.StatusTemporaryRedirect,
+			setupLink: true,
+			setupURL:  "https://example.com/test",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var linkID string
+			if tt.setupLink {
+				// Create a link first
+				req1 := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.setupURL))
+				res1 := executeRequest(req1, server)
+				linkID = res1.Body.String()
+			} else {
+				linkID = tt.linkID
+			}
+
+			req := httptest.NewRequest(http.MethodGet, linkID, nil)
+			res := executeRequest(req, server)
+
+			assert.Equal(t, tt.resStatus, res.Code)
+
+			if tt.resStatus == http.StatusTemporaryRedirect {
+				header := res.Header().Get("location")
+				assert.Equal(t, tt.setupURL, header)
+			}
+		})
+	}
+}
+
+func TestGetUserURLsHandler(t *testing.T) {
+	tests := []TestSetup{
+		{
+			URLs:        []string{"https://example.com/1", "https://example.com/2"},
+			ResStatus:   http.StatusOK,
+			ExpectEmpty: false,
+			SkipAuth:    false,
+		},
+		{
+			URLs:        []string{},
+			ResStatus:   http.StatusNoContent,
+			ExpectEmpty: true,
+			SkipAuth:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			runUserURLsTest(t, server, tt)
 		})
 	}
 }
