@@ -21,7 +21,7 @@ var (
 	buildCommit  string
 )
 
-func main() {
+func printBuildInfo() {
 	if buildVersion == "" {
 		buildVersion = "N/A"
 	}
@@ -34,6 +34,10 @@ func main() {
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)
+}
+
+func main() {
+	printBuildInfo()
 
 	cfg := config.NewConfig(true)
 	zl, err := logger.NewLogger(cfg.LogLevel)
