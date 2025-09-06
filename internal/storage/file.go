@@ -108,3 +108,27 @@ func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForD
 	}
 
 }
+
+// Close closes the FileRepository by ensuring all data is flushed to disk.
+// This method saves all current data to the file during graceful shutdown.
+func (r *FileRepository) Close() error {
+	// Ensure all data is written to file before closing
+	file, err := os.OpenFile(r.path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	all := r.cache.GetAll()
+	var result []byte
+	for _, url := range all {
+		data, err := json.Marshal(url)
+		if err != nil {
+			return fmt.Errorf("error marshalling URL data: %v", err)
+		}
+		result = append(result, data...)
+		result = append(result, '\n')
+	}
+	_, err = file.Write(result)
+	return err
+}

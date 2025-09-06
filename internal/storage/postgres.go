@@ -171,3 +171,10 @@ func (r PgRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDel
 		}
 	}
 }
+
+// Close closes the PostgreSQL connection pool.
+// This should be called during graceful shutdown to ensure all connections are properly closed.
+func (r *PgRepository) Close() error {
+	r.pool.Close()
+	return nil
+}
