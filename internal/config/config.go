@@ -14,6 +14,7 @@ type Config struct {
 	LogLevel        string
 	FileStoragePath string
 	DatabaseDSN     string
+	EnableHTTPS     bool
 }
 type envConfig struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"`
@@ -21,6 +22,7 @@ type envConfig struct {
 	LogLevel        string `env:"LOG_LEVEL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
+	EnableHTTPS     bool   `env:"ENABLE_HTTPS"`
 }
 
 // NewConfig creates a new Config instance with default values from flags and environment variables.
@@ -38,6 +40,7 @@ func NewConfig(parse bool) *Config {
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.FileStoragePath, "f", "", "persistent storage file path")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "postgres connection string")
+	flag.BoolVar(&cfg.EnableHTTPS, "s", false, "use https instead of http")
 	if parse {
 		flag.Parse()
 	}
@@ -56,6 +59,9 @@ func NewConfig(parse bool) *Config {
 	}
 	if envCfg.DatabaseDSN != "" {
 		cfg.DatabaseDSN = envCfg.DatabaseDSN
+	}
+	if envCfg.EnableHTTPS {
+		cfg.EnableHTTPS = envCfg.EnableHTTPS
 	}
 	return cfg
 }
