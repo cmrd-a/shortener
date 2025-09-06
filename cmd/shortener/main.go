@@ -61,10 +61,17 @@ func main() {
 	}(zl)
 	zl.Info("Running server", zap.String("address", cfg.ServerAddress))
 
-	server.GenerateTLS()
-
-	err = http.ListenAndServeTLS(cfg.ServerAddress, "cert.pem", "private_key.pem", s.Router)
-	if err != nil {
-		log.Fatal(err)
+	if cfg.EnableHTTPS {
+		server.GenerateTLS()
+		err = http.ListenAndServeTLS(cfg.ServerAddress, "cert.pem", "private_key.pem", s.Router)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		err = http.ListenAndServe(cfg.ServerAddress, s.Router)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+
 }

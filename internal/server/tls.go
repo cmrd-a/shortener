@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// GenerateTLS создаёт и сохраняет сертификат
 func GenerateTLS() {
 	// создаём шаблон сертификата
 	cert := &x509.Certificate{
@@ -66,7 +67,7 @@ func GenerateTLS() {
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
 
-	// Save certificate and private key to files
+	// Сохраняем сертификат и ключ в файлы
 	err = os.WriteFile("cert.pem", certPEM.Bytes(), 0644)
 	if err != nil {
 		log.Printf("WARNING: failed to save certificate to file: %v\n", err)
