@@ -24,3 +24,5 @@ vendor/
 
 storage.txt
 .env
+
+*.pem
