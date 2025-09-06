@@ -2,9 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/cmrd-a/shortener/internal/config"
 	"github.com/cmrd-a/shortener/internal/logger"
@@ -59,9 +64,59 @@ func main() {
 			log.Fatal(err)
 		}
 	}(zl)
-	zl.Info("Running server", zap.String("address", cfg.ServerAddress))
-	err = http.ListenAndServe(cfg.ServerAddress, s.Router)
-	if err != nil {
-		log.Fatal(err)
+
+	// Create HTTP server
+	httpServer := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: s.Router,
 	}
+
+	// Create a channel to receive shutdown signals
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	// Start server in a goroutine
+	go func() {
+		zl.Info("Running server", zap.String("address", cfg.ServerAddress))
+
+		var err error
+		if cfg.EnableHTTPS {
+			server.GenerateTLS()
+			err = httpServer.ListenAndServeTLS("cert.pem", "private_key.pem")
+		} else {
+			err = httpServer.ListenAndServe()
+		}
+
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			zl.Fatal("Server failed to start", zap.Error(err))
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-shutdown
+	zl.Info("Shutdown signal received")
+
+	// Create a timeout context for graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Shutdown the HTTP server gracefully
+	zl.Info("Shutting down HTTP server...")
+	if err := httpServer.Shutdown(ctx); err != nil {
+		zl.Error("Server shutdown failed", zap.Error(err))
+	} else {
+		zl.Info("Server shutdown completed")
+	}
+
+	// Close storage repository if it has a Close method
+	if closer, ok := repo.(interface{ Close() error }); ok {
+		zl.Info("Closing storage repository...")
+		if err := closer.Close(); err != nil {
+			zl.Error("Failed to close storage repository", zap.Error(err))
+		} else {
+			zl.Info("Storage repository closed successfully")
+		}
+	}
+
+	zl.Info("Application shutdown completed")
 }
