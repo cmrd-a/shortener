@@ -107,3 +107,9 @@ func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URL
 func (r InMemoryRepository) GetAll() map[string]StoredURL {
 	return r.store
 }
+
+// Close closes the InMemoryRepository.
+// For in-memory storage, this is a no-op but provided for interface consistency.
+func (r *InMemoryRepository) Close() error {
+	return nil
+}
