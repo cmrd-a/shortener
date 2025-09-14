@@ -43,5 +43,6 @@ cover-cli: cover
 	go tool cover -func=coverage.out
 
 install-tools:
-	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/golang/mock/mockgen@latest
 	go install honnef.co/go/tools/cmd/staticcheck@latest
+	go install golang.org/x/tools/cmd/goimports@latest

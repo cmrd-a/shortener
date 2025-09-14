@@ -14,6 +14,7 @@ type Repository interface {
 	Ping(context.Context) error
 	GetUserURLs(context.Context, int64) ([]StoredURL, error)
 	MarkDeletedUserURLs(context.Context, ...URLForDelete)
+	GetStats(context.Context) (Stats, error)
 }
 
 // MakeRepository creates a Repository instance based on the provided configuration.

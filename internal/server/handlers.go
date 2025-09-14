@@ -30,6 +30,8 @@ type Servicer interface {
 	GetUserURLs(ctx context.Context, userID int64) (urls []service.SvcURL, err error)
 	// Удаляет ссылки пользователя
 	DeleteUserURLs(ctx context.Context, userID int64, shortIDs ...string)
+	// Возвращает статистику сервиса
+	GetStats(ctx context.Context) (stats storage.Stats, err error)
 }
 
 // AddLinkHandler returns an HTTP handler for shortening URLs via plain text body.
@@ -267,5 +269,35 @@ func DeleteUserURLsHandler(svc Servicer) func(http.ResponseWriter, *http.Request
 
 		svc.DeleteUserURLs(req.Context(), userID, reqJSON...)
 		res.WriteHeader(http.StatusAccepted)
+	}
+}
+
+// StatsHandler returns an HTTP handler for retrieving service statistics.
+func StatsHandler(svc Servicer) func(http.ResponseWriter, *http.Request) {
+	return func(res http.ResponseWriter, req *http.Request) {
+		stats, err := svc.GetStats(req.Context())
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := StatsResponse{
+			URLs:  stats.URLs,
+			Users: stats.Users,
+		}
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusOK)
+
+		resBytes, err := response.MarshalJSON()
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = res.Write(resBytes)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }

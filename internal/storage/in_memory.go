@@ -103,6 +103,24 @@ func (r InMemoryRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URL
 	}
 }
 
+// GetStats retrieves statistics about the URL shortener usage.
+func (r InMemoryRepository) GetStats(ctx context.Context) (Stats, error) {
+	uniqueUsers := make(map[int64]bool)
+	urlCount := 0
+
+	for _, url := range r.store {
+		if !url.IsDeleted {
+			urlCount++
+		}
+		uniqueUsers[url.UserID] = true
+	}
+
+	return Stats{
+		URLs:  urlCount,
+		Users: len(uniqueUsers),
+	}, nil
+}
+
 // GetAll returns all stored URLs (used primarily for testing and debugging).
 func (r InMemoryRepository) GetAll() map[string]StoredURL {
 	return r.store

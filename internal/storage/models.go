@@ -15,3 +15,9 @@ type URLForDelete struct {
 	ShortID string
 	UserID  int64
 }
+
+// Stats represents statistics about the URL shortener usage.
+type Stats struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

@@ -57,7 +57,7 @@ func main() {
 	}
 	generator := service.NewShortGenerator()
 	svc := service.NewURLService(generator, cfg.BaseURL, repo)
-	s := server.NewServer(zl, svc)
+	s := server.NewServer(zl, svc, cfg.TrustedSubnet)
 	defer func(Log *zap.Logger) {
 		err := Log.Sync()
 		if err != nil {

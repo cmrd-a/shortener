@@ -85,6 +85,11 @@ func (r FileRepository) GetUserURLs(ctx context.Context, userID int64) ([]Stored
 	return r.cache.GetUserURLs(ctx, userID)
 }
 
+// GetStats retrieves statistics about the stored URLs and users from the cache.
+func (r FileRepository) GetStats(ctx context.Context) (Stats, error) {
+	return r.cache.GetStats(ctx)
+}
+
 // MarkDeletedUserURLs marks the specified URLs as deleted in cache and rewrites the entire file.
 func (r FileRepository) MarkDeletedUserURLs(ctx context.Context, urls ...URLForDelete) {
 	r.cache.MarkDeletedUserURLs(ctx, urls...)
