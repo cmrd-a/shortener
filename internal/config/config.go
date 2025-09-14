@@ -37,6 +37,7 @@ type Config struct {
 	DatabaseDSN     string
 	EnableHTTPS     bool
 	ConfigPath      string
+	TrustedSubnet   string
 }
 
 type envJSONConfig struct {
@@ -47,6 +48,7 @@ type envJSONConfig struct {
 	DatabaseDSN     string `env:"DATABASE_DSN" json:"database_dsn"`
 	EnableHTTPS     bool   `env:"ENABLE_HTTPS" json:"enable_https"`
 	ConfigPath      string `env:"CONFIG"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET"`
 }
 
 // NewConfig creates a new Config instance with configuration loaded in priority order.
@@ -87,7 +89,9 @@ func NewConfig(parse bool) *Config {
 		flag.StringVar(&flagValues.DatabaseDSN, "d", cfg.DatabaseDSN, "postgres connection string")
 		flag.BoolVar(&flagValues.EnableHTTPS, "s", cfg.EnableHTTPS, "use https instead of http")
 		flag.StringVar(&flagValues.ConfigPath, "c", cfg.ConfigPath, "config file path")
-
+		flag.StringVar(&cfg.TrustedSubnet, "t", "", "trusted subnet in CIDR format")
+	}
+	if parse {
 		flag.Parse()
 
 		// Update config path from flag if provided
@@ -152,7 +156,9 @@ func NewConfig(parse bool) *Config {
 	if envCfg.EnableHTTPS {
 		cfg.EnableHTTPS = envCfg.EnableHTTPS
 	}
-
+	if envCfg.TrustedSubnet != "" {
+		cfg.TrustedSubnet = envCfg.TrustedSubnet
+	}
 	return cfg
 }
 

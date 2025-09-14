@@ -49,3 +49,11 @@ type GetUserURLsResponseItem struct {
 //
 //easyjson:json
 type DeleteUserURLsRequest []string
+
+// StatsResponse represents the JSON response body for service statistics.
+//
+//easyjson:json
+type StatsResponse struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cmrd-a/shortener/internal/service"
+	"github.com/cmrd-a/shortener/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -50,13 +51,20 @@ func (m *MockService) DeleteUserURLs(ctx context.Context, userID int64, shortIDs
 	// Mock implementation - do nothing
 }
 
+func (m *MockService) GetStats(context.Context) (storage.Stats, error) {
+	return storage.Stats{
+		URLs:  0,
+		Users: 0,
+	}, nil
+}
+
 func setupTestServer() *Server {
 	// Set JWT secret for auth middleware
 	os.Setenv("JWT_SECRET", "test-secret-key")
 
 	logger := zap.NewNop() // Use no-op logger for tests
 	mockService := &MockService{}
-	return NewServer(logger, mockService)
+	return NewServer(logger, mockService, "")
 }
 
 // ExampleShortenHandler demonstrates the basic usage of the ShortenHandler
