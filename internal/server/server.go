@@ -12,7 +12,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance with configured middleware and routes.
-func NewServer(log *zap.Logger, service Servicer) *Server {
+func NewServer(log *zap.Logger, service Servicer, trustedSubnet string) *Server {
 	s := &Server{chi.NewRouter()}
 	s.Router.Use(
 		middleware.RequestResponseLogger(log),
@@ -30,6 +30,11 @@ func NewServer(log *zap.Logger, service Servicer) *Server {
 	s.Router.Post("/api/shorten/batch", ShortenBatchHandler(service))
 	s.Router.Get("/api/user/urls", GetUserURLsHandler(service))
 	s.Router.Delete("/api/user/urls", DeleteUserURLsHandler(service))
+
+	s.Router.Route("/api/internal", func(r chi.Router) {
+		r.Use(middleware.TrustedSubnet(trustedSubnet))
+		r.Get("/stats", StatsHandler(service))
+	})
 
 	return s
 }

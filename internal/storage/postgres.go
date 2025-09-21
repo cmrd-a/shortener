@@ -131,6 +131,26 @@ func (r PgRepository) AddBatch(ctx context.Context, userID int64, batch ...Store
 	return nil
 }
 
+// GetStats retrieves statistics about the URL shortener usage.
+func (r PgRepository) GetStats(ctx context.Context) (Stats, error) {
+	var urlCount, userCount int
+
+	err := r.pool.QueryRow(ctx, "SELECT COUNT(*) FROM url WHERE is_deleted = false").Scan(&urlCount)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	err = r.pool.QueryRow(ctx, "SELECT COUNT(DISTINCT user_id) FROM url").Scan(&userCount)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	return Stats{
+		URLs:  urlCount,
+		Users: userCount,
+	}, nil
+}
+
 // GetUserURLs retrieves all non-deleted URLs created by a specific user from PostgreSQL.
 func (r PgRepository) GetUserURLs(ctx context.Context, userID int64) ([]StoredURL, error) {
 	rows, err := r.pool.Query(ctx, `

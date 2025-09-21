@@ -24,3 +24,8 @@ func NewOriginalExistError(short string) error {
 
 // ErrURLIsDeleted is returned when attempting to access a URL that has been marked as deleted.
 var ErrURLIsDeleted = errors.New("url is deleted")
+
+// IsURLDeleted checks if the error indicates a URL is deleted.
+func IsURLDeleted(err error) bool {
+	return errors.Is(err, ErrURLIsDeleted)
+}

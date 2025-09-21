@@ -69,6 +69,9 @@ const (
 	userIDKey ctxKey = iota
 )
 
+// UserIDKey is the exported key for user ID context values
+const UserIDKey = userIDKey
+
 // GetUserID extracts the user ID from the request context.
 func GetUserID(ctx context.Context) int64 {
 	v, ok := ctx.Value(userIDKey).(int64)
@@ -85,6 +88,20 @@ func generateUserID() (int64, error) {
 		return 0, err
 	}
 	return int64(binary.BigEndian.Uint64(b[:])) & 0x7FFFFFFFFFFFFFFF, nil
+}
+
+// GenerateUserID is the exported version of generateUserID
+func GenerateUserID() int64 {
+	userID, err := generateUserID()
+	if err != nil {
+		return 1 // fallback user ID
+	}
+	return userID
+}
+
+// ValidateJWT validates a JWT token and returns the user ID
+func ValidateJWT(tokenString string) (int64, error) {
+	return ParseToken(tokenString)
 }
 
 // UpsertAuthCookie returns middleware that ensures each request has a valid authentication cookie.

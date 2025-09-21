@@ -134,6 +134,11 @@ func (s *URLService) DeleteUserURLs(ctx context.Context, userID int64, shortIDs 
 	}
 }
 
+// GetStats retrieves statistics about the URL shortener usage.
+func (s *URLService) GetStats(ctx context.Context) (storage.Stats, error) {
+	return s.repository.GetStats(ctx)
+}
+
 func (s *URLService) deleteUserURLsJob() {
 	ticker := time.NewTicker(5 * time.Second)
 

@@ -35,6 +35,9 @@ type Config struct {
 	LogLevel        string
 	FileStoragePath string
 	DatabaseDSN     string
+	TrustedSubnet   string
+	GRPCAddress     string
+	EnableGRPC      bool
 	EnableHTTPS     bool
 	ConfigPath      string
 }
@@ -47,6 +50,9 @@ type envJSONConfig struct {
 	DatabaseDSN     string `env:"DATABASE_DSN" json:"database_dsn"`
 	EnableHTTPS     bool   `env:"ENABLE_HTTPS" json:"enable_https"`
 	ConfigPath      string `env:"CONFIG"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	GRPCAddress     string `env:"GRPC_ADDRESS" json:"grpc_address"`
+	EnableGRPC      bool   `env:"ENABLE_GRPC" json:"enable_grpc"`
 }
 
 // NewConfig creates a new Config instance with configuration loaded in priority order.
@@ -87,7 +93,11 @@ func NewConfig(parse bool) *Config {
 		flag.StringVar(&flagValues.DatabaseDSN, "d", cfg.DatabaseDSN, "postgres connection string")
 		flag.BoolVar(&flagValues.EnableHTTPS, "s", cfg.EnableHTTPS, "use https instead of http")
 		flag.StringVar(&flagValues.ConfigPath, "c", cfg.ConfigPath, "config file path")
-
+		flag.StringVar(&cfg.TrustedSubnet, "t", "", "trusted subnet in CIDR format")
+		flag.StringVar(&cfg.GRPCAddress, "g", ":9090", "address and port to run gRPC server")
+		flag.BoolVar(&cfg.EnableGRPC, "grpc", false, "enable gRPC server")
+	}
+	if parse {
 		flag.Parse()
 
 		// Update config path from flag if provided
@@ -126,6 +136,12 @@ func NewConfig(parse bool) *Config {
 		if explicitFlags["s"] {
 			cfg.EnableHTTPS = flagValues.EnableHTTPS
 		}
+		if explicitFlags["g"] {
+			cfg.GRPCAddress = flagValues.GRPCAddress
+		}
+		if explicitFlags["grpc"] {
+			cfg.EnableGRPC = flagValues.EnableGRPC
+		}
 		if explicitFlags["c"] && flagValues.ConfigPath != cfg.ConfigPath {
 			cfg.ConfigPath = flagValues.ConfigPath
 			// Reload JSON config if path was changed via flag
@@ -152,7 +168,15 @@ func NewConfig(parse bool) *Config {
 	if envCfg.EnableHTTPS {
 		cfg.EnableHTTPS = envCfg.EnableHTTPS
 	}
-
+	if envCfg.TrustedSubnet != "" {
+		cfg.TrustedSubnet = envCfg.TrustedSubnet
+	}
+	if envCfg.GRPCAddress != "" {
+		cfg.GRPCAddress = envCfg.GRPCAddress
+	}
+	if envCfg.EnableGRPC {
+		cfg.EnableGRPC = envCfg.EnableGRPC
+	}
 	return cfg
 }
 
@@ -191,4 +215,11 @@ func loadJSONConfig(cfg *Config, configPath string) {
 	}
 	// For boolean values, we apply them directly since false is a valid value
 	cfg.EnableHTTPS = jsonCfg.EnableHTTPS
+	if jsonCfg.TrustedSubnet != "" {
+		cfg.TrustedSubnet = jsonCfg.TrustedSubnet
+	}
+	if jsonCfg.GRPCAddress != "" {
+		cfg.GRPCAddress = jsonCfg.GRPCAddress
+	}
+	cfg.EnableGRPC = jsonCfg.EnableGRPC
 }

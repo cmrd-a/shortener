@@ -11,11 +11,17 @@ test:
 	go test -cover ./...
 	go test ./... -v
 
-gen:
+gen: proto-gen
 	go generate ./...
 	mockgen -destination=internal/storage/storage_mocks/mock_repository.go -package=storage_mocks github.com/cmrd-a/shortener/internal/storage Repository
 	mockgen -destination=internal/service/service_mocks/mock_generator.go -package=service_mocks github.com/cmrd-a/shortener/internal/service Generator
 	make format
+
+proto-gen:
+	protoc --proto_path=api/proto \
+		--go_out=api/proto/shortener --go_opt=paths=source_relative \
+		--go-grpc_out=api/proto/shortener --go-grpc_opt=paths=source_relative \
+		api/proto/shortener.proto
 
 format:
 	goimports -l -w .
@@ -43,5 +49,6 @@ cover-cli: cover
 	go tool cover -func=coverage.out
 
 install-tools:
-	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/golang/mock/mockgen@latest
 	go install honnef.co/go/tools/cmd/staticcheck@latest
+	go install golang.org/x/tools/cmd/goimports@latest

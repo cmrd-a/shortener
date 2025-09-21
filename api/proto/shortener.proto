@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "github.com/cmrd-a/shortener/api/proto/shortener";
+
+// Сервис для сокращения URL
+service ShortenerService {
+  // Сокращение URL (аналог POST /)
+  rpc AddLink(AddLinkRequest) returns (AddLinkResponse);
+
+  // Получение оригинального URL (аналог GET /{linkId})
+  rpc GetLink(GetLinkRequest) returns (GetLinkResponse);
+
+  // Проверка состояния сервиса (аналог GET /ping)
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  // Сокращение URL с JSON (аналог POST /api/shorten)
+  rpc Shorten(ShortenRequest) returns (ShortenResponse);
+
+  // Пакетное сокращение URL (аналог POST /api/shorten/batch)
+  rpc ShortenBatch(ShortenBatchRequest) returns (ShortenBatchResponse);
+
+  // Получение URL пользователя (аналог GET /api/user/urls)
+  rpc GetUserURLs(GetUserURLsRequest) returns (GetUserURLsResponse);
+
+  // Удаление URL пользователя (аналог DELETE /api/user/urls)
+  rpc DeleteUserURLs(DeleteUserURLsRequest) returns (DeleteUserURLsResponse);
+
+  // Получение статистики (аналог GET /api/internal/stats)
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+
+message AddLinkRequest {
+  string url = 1;
+}
+
+message AddLinkResponse {
+  string short_url      = 1;
+  bool   already_exists = 2; // для обработки статуса 409
+}
+
+message GetLinkRequest {
+  string link_id = 1;
+}
+
+message GetLinkResponse {
+  string original_url = 1;
+  bool   is_deleted   = 2; // для обработки статуса 410
+}
+
+message PingRequest {}
+
+message PingResponse {
+  bool healthy = 1;
+}
+
+message ShortenRequest {
+  string url = 1;
+}
+
+message ShortenResponse {
+  string result         = 1;
+  bool   already_exists = 2;
+}
+
+message ShortenBatchRequest {
+  repeated ShortenBatchItem items = 1;
+}
+
+message ShortenBatchItem {
+  string correlation_id = 1;
+  string original_url   = 2;
+}
+
+message ShortenBatchResponse {
+  repeated ShortenBatchResponseItem items = 1;
+}
+
+message ShortenBatchResponseItem {
+  string correlation_id = 1;
+  string short_url      = 2;
+}
+
+message GetUserURLsRequest {}
+
+message GetUserURLsResponse {
+  repeated UserURL urls = 1;
+}
+
+message UserURL {
+  string short_url    = 1;
+  string original_url = 2;
+}
+
+message DeleteUserURLsRequest {
+  repeated string short_ids = 1;
+}
+
+message DeleteUserURLsResponse {
+  bool success = 1;
+}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  int32 urls  = 1;
+  int32 users = 2;
+}
