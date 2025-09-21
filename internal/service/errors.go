@@ -16,3 +16,17 @@ func NewOriginalExistError(short string) error {
 		Short: short,
 	}
 }
+
+// IsOriginalExistError checks if the error is an OriginalExistError and returns it.
+func IsOriginalExistError(err error, target **OriginalExistError) bool {
+	if err == nil {
+		return false
+	}
+	if origErr, ok := err.(*OriginalExistError); ok {
+		if target != nil {
+			*target = origErr
+		}
+		return true
+	}
+	return false
+}

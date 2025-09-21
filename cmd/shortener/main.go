@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/cmrd-a/shortener/internal/config"
+	grpcserver "github.com/cmrd-a/shortener/internal/grpc"
 	"github.com/cmrd-a/shortener/internal/logger"
 	"github.com/cmrd-a/shortener/internal/server"
 	"github.com/cmrd-a/shortener/internal/service"
@@ -65,7 +67,6 @@ func main() {
 		}
 	}(zl)
 
-	// Create HTTP server
 	httpServer := &http.Server{
 		Addr:    cfg.ServerAddress,
 		Handler: s.Router,
@@ -75,9 +76,12 @@ func main() {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
-	// Start server in a goroutine
+	var wg sync.WaitGroup
+
+	wg.Add(1)
 	go func() {
-		zl.Info("Running server", zap.String("address", cfg.ServerAddress))
+		defer wg.Done()
+		zl.Info("Running HTTP server", zap.String("address", cfg.ServerAddress))
 
 		var err error
 		if cfg.EnableHTTPS {
@@ -88,9 +92,19 @@ func main() {
 		}
 
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			zl.Fatal("Server failed to start", zap.Error(err))
+			zl.Error("HTTP server failed", zap.Error(err))
 		}
 	}()
+
+	if cfg.EnableGRPC {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := grpcserver.StartGRPCServer(cfg.GRPCAddress, svc, cfg.TrustedSubnet, zl); err != nil {
+				zl.Error("gRPC server failed", zap.Error(err))
+			}
+		}()
+	}
 
 	// Wait for shutdown signal
 	<-shutdown
@@ -103,9 +117,23 @@ func main() {
 	// Shutdown the HTTP server gracefully
 	zl.Info("Shutting down HTTP server...")
 	if err := httpServer.Shutdown(ctx); err != nil {
-		zl.Error("Server shutdown failed", zap.Error(err))
+		zl.Error("HTTP server shutdown failed", zap.Error(err))
 	} else {
-		zl.Info("Server shutdown completed")
+		zl.Info("HTTP server shutdown completed")
+	}
+
+	// Wait for all servers to finish
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		zl.Info("All servers stopped")
+	case <-ctx.Done():
+		zl.Warn("Shutdown timeout exceeded")
 	}
 
 	// Close storage repository if it has a Close method
